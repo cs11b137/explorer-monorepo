@@ -15,6 +15,10 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      PROJECT: cs-explorer
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,8 +36,11 @@ jobs:
       - name: Build
         run: npm run build
 
+      # 项目名决定 pages.dev 子域名，项目创建后不能改名。
+      - name: Create project if missing
+        run: |
+          npx --yes wrangler@4 pages project list | grep -qw "$PROJECT" \
+            || npx --yes wrangler@4 pages project create "$PROJECT" --production-branch=main
+
       - name: Deploy
-        run: npx --yes wrangler@4 pages deploy dist --project-name=explorer-monorepo --branch=main
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 pages deploy dist --project-name="$PROJECT" --branch=main
