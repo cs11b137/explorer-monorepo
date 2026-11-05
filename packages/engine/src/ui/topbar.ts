@@ -12,7 +12,7 @@ export function topbarMarkup(): string {
   return `
   <header class="topbar">
     <button class="drawer-btn" type="button" aria-label="课程列表" aria-expanded="false" aria-controls="lessons">${ICONS.menu}<span>课程</span></button>
-    <a class="brand" href="/" title="返回课程首页">
+    <a class="brand" href="${import.meta.env.BASE_URL}" title="返回课程首页">
       <div class="logo-frame">
         <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
         ${brand.logo}

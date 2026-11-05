@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
+import { mirrorUrl, rewriteMirror } from '../scripts/protocol-mirror';
 
 const MODULES = ['protocol', 'os', 'algo', 'codegen', 'cpu', 'db'];
-const PAGE_FILES = new Set(['/index.html', '/robots.txt', '/sitemap.xml']);
 
 test('首页没有资源错误，也不横向溢出', async ({ page }) => {
   const problems: string[] = [];
@@ -14,7 +14,7 @@ test('首页没有资源错误，也不横向溢出', async ({ page }) => {
   page.on('response', (response) => {
     if (response.status() >= 400) problems.push(`${response.status()} ${response.url()}`);
   });
-  await page.goto('/');
+  await page.goto('./');
   await expect(page.locator('.course')).toHaveCount(MODULES.length);
   await expect.poll(() => page.locator('.course img').evaluateAll((images) => images.every((image) => (image as HTMLImageElement).naturalWidth > 0))).toBe(true);
   await page.setViewportSize({ width: 390, height: 800 });
@@ -29,9 +29,9 @@ for (const name of MODULES) {
     page.on('response', (response) => {
       if (response.status() >= 400) problems.push(`${response.status()} ${response.url()}`);
     });
-    await page.goto('/');
+    await page.goto('./');
     await page.click(`.course[data-module="${name}"]`);
-    await expect(page).toHaveURL(`/modules/${name}/`);
+    await expect(page).toHaveURL(`modules/${name}/`);
     await expect(page.locator('.proto')).toHaveCount(14);
     expect(problems).toEqual([]);
   });
@@ -39,38 +39,41 @@ for (const name of MODULES) {
 
 for (const name of MODULES.filter((module) => module !== 'protocol')) {
   test(`${name} 模块的品牌区回到首页`, async ({ page }) => {
-    await page.goto(`/modules/${name}/`);
+    await page.goto(`modules/${name}/`);
     await page.click('a.brand');
-    await expect(page).toHaveURL('/');
+    await expect(page).toHaveURL('./');
     await expect(page.locator('.course')).toHaveCount(MODULES.length);
   });
 
   test(`${name} 模块的 manifest 和图标都能加载`, async ({ request }) => {
-    const manifest = await (await request.get(`/modules/${name}/site.webmanifest`)).json();
-    expect(manifest.start_url).toBe(`/modules/${name}/`);
-    expect((await request.get(manifest.icons[0].src)).status()).toBe(200);
+    const manifest = await (await request.get(`modules/${name}/site.webmanifest`)).json();
+    expect(manifest.start_url).toBe('./');
+    expect((await request.get(`modules/${name}/${manifest.icons[0].src}`)).status()).toBe(200);
   });
 }
 
 test('不带斜杠的模块地址也能进入', async ({ page }) => {
-  await page.goto('/modules/os?x=1');
-  await expect(page).toHaveURL('/modules/os/?x=1');
+  await page.goto('modules/os?x=1');
+  await expect(page).toHaveURL('modules/os/?x=1');
   await expect(page.locator('.proto')).toHaveCount(14);
-  await page.goto('/modules/protocol');
-  await expect(page).toHaveURL('/modules/protocol/');
+  await page.goto('modules/protocol');
+  await expect(page).toHaveURL('modules/protocol/');
   await expect(page.locator('.proto')).toHaveCount(14);
 });
 
 test('不存在的地址返回 404，不会落回首页', async ({ request }) => {
-  expect((await request.get('/modules/nope/')).status()).toBe(404);
+  expect((await request.get('modules/nope/')).status()).toBe(404);
 });
 
-test('服务提供的 Protocol 镜像和 MANIFEST.json 逐字节一致', async ({ request }) => {
+test('部署的 Protocol 镜像只改动了路径，二进制文件逐字节不变', async ({ request, baseURL }) => {
+  const base = new URL(baseURL!).pathname;
   const manifest = JSON.parse(readFileSync('modules/protocol/MANIFEST.json', 'utf8')) as { files: Array<{ path: string; sha256: string }> };
   for (const file of manifest.files) {
-    const url = PAGE_FILES.has(file.path) ? `/modules/protocol${file.path}` : file.path;
+    const source = readFileSync(`modules/protocol/site${file.path}`);
+    expect(createHash('sha256').update(source).digest('hex'), file.path).toBe(file.sha256);
+    const url = mirrorUrl(file.path).slice(1);
     const response = await request.get(url);
     expect(response.status(), url).toBe(200);
-    expect(createHash('sha256').update(await response.body()).digest('hex'), url).toBe(file.sha256);
+    expect(Buffer.compare(await response.body(), rewriteMirror(file.path, source, base)), url).toBe(0);
   }
 });

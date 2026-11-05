@@ -2,9 +2,9 @@
   "name": "Codegen Explorer · 看懂源代码如何变成机器码",
   "short_name": "Codegen Explorer",
   "lang": "zh-CN",
-  "start_url": "/modules/codegen/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#fdfdfe",
   "theme_color": "#003ca8",
-  "icons": [{ "src": "/modules/codegen/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+  "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
 }

@@ -2,6 +2,8 @@
 
 交互式教学主站：逐事件动画 + 逐字节解码。首页是课程入口，六门课程是主站下的模块，全部由一个服务提供。
 
+线上地址：<https://wuwenjunpr.site/explorer-monorepo/>
+
 | 目录 | 模块 | 内容 | 地址 |
 |---|---|---|---|
 | `index.html`、`src/`、`public/` | 主站首页 | 课程入口 | `/` |
@@ -22,7 +24,7 @@ npm run build            # 类型检查、校验镜像，构建到 dist/
 npm start                # 用一个服务提供 dist/，端口同样是 5300
 npm run typecheck
 npm test                 # 全部单元测试，并校验 Protocol Explorer 镜像
-npm run test:e2e         # 全部端到端测试，只测 Chromium
+npm run test:e2e         # 全部端到端测试，只测 Chromium，按线上的子路径构建
 npm run test:e2e -- --project=cpu   # 只测一个模块，主站首页的项目名是 portal
 npm run mirror:protocol  # 从线上重新镜像 Protocol Explorer
 ```
@@ -33,7 +35,12 @@ npm run mirror:protocol  # 从线上重新镜像 Protocol Explorer
 
 - 所有模块同源，`localStorage` 靠各自的存储前缀隔开，前缀不能重复。
 - 模块的静态文件（图标、manifest、`theme-init.js`）在 `public/modules/<name>/`。
-- 站点根路径的 `/assets/`、`/favicon.svg` 等归 Protocol 镜像所有，主站的构建产物放在 `/static/`。详见 `modules/protocol/PROVENANCE.md`。
+- 基路径下的 `assets/`、`favicon.svg` 等归 Protocol 镜像所有，主站的构建产物放在 `static/`。详见 `modules/protocol/PROVENANCE.md`。
+- 站点可以部署在子路径下，所以模块和首页里不要写死 `/` 开头的导航地址：HTML 里的页面链接用相对路径，代码里用 `import.meta.env.BASE_URL`。
+
+## 部署
+
+推送到 `main` 后，`.github/workflows/deploy.yml` 会用 `BASE_PATH=/<仓库名>/` 构建，并发布到 GitHub Pages。域名 `wuwenjunpr.site` 配在 `cs11b137.github.io` 仓库上，本仓库作为项目站自动挂在它的子路径下，所以不需要 CNAME 文件。改仓库名会改变线上地址。
 
 ## 引擎和站点怎么分工
 

@@ -2,9 +2,9 @@
   "name": "CPU Explorer · 看懂计算机如何执行每条指令",
   "short_name": "CPU Explorer",
   "lang": "zh-CN",
-  "start_url": "/modules/cpu/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#fdfdfe",
   "theme_color": "#003ca8",
-  "icons": [{ "src": "/modules/cpu/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+  "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
 }
