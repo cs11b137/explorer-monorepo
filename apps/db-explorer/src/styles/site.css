@@ -1,0 +1,113 @@
+/* 本站相对引擎样式的差异。引擎样式先加载，这里的规则在后面，同选择器时覆盖引擎。 */
+.brand-text p { font-size: 13px; line-height: 18px; font-weight: 400; letter-spacing: 0.02em; color: var(--ink-7); white-space: nowrap; }
+.now { width: 320px; flex-shrink: 0; }
+.is-single .simulation { height: clamp(360px, 100vw, 620px); }
+/* 结构板：直接显示页面、缓冲池、B+ 树等的当前状态 */
+.network .bd-panel { fill: var(--paper); stroke: var(--line); stroke-width: 1.2; }
+.network .bd-head { fill: var(--fill-card); stroke: var(--line); stroke-width: 1.2; }
+.network .bd-title { font-weight: 800; fill: var(--ink-strong); letter-spacing: 0.02em; }
+.network .bd-sub { font-weight: 500; fill: var(--ink-4); }
+.network .bd-off { font-weight: 600; fill: var(--ink-6); }
+.network .bd-ptr { font-weight: 800; fill: var(--active); }
+.network .bd-note { font-weight: 600; fill: var(--ink-3); }
+.network .bd-th { font-weight: 700; fill: var(--ink-5); }
+.network .bd-th.is-hot { fill: var(--active); }
+.network .bd-td { font-weight: 600; fill: var(--ink-strong); }
+.network .bd-td.is-muted, .network .bd-keyt.is-muted { fill: var(--ink-8); }
+.network .bd-tag { font-weight: 800; fill: var(--ink-strong); }
+.network .bd-tag.is-win { fill: var(--ct-green); }
+.network .bd-keyt { font-weight: 700; fill: var(--ink-strong); }
+.network .bd-seg-t { font-weight: 800; fill: var(--ink-strong); }
+.network .bd-seg-s { font-weight: 600; fill: var(--ink-4); }
+.network .bd-thead { fill: var(--fill-pill); }
+.network .bd-row { fill: transparent; stroke: var(--line-faint); stroke-width: 1; }
+.network .bd-row.is-muted { fill: var(--fill-hover); }
+.network .bd-strike { stroke: var(--err-line); stroke-width: 1.6; }
+.network .bd-seg { stroke: var(--art-line); stroke-width: 1; fill: var(--art-steel-soft); }
+.network .bd-seg.s-head { fill: var(--fill-track); }
+.network .bd-seg.s-free { fill: var(--paper); stroke-dasharray: 4 3; stroke: var(--line); }
+.network .bd-seg.s-tup { fill: var(--fill-current); }
+.network .bd-seg.s-special { fill: var(--eg-fill); }
+.network .bd-seg.f0 { fill: var(--paper); }
+.network .bd-seg.f3 { fill: var(--err-fill); }
+.network .bd-seg.f2 { fill: var(--eg-fill); }
+.network .bd-seg.is-muted { fill: var(--fill-hover); stroke: var(--line-btn); }
+.network .bd-link { fill: none; stroke: var(--art-line-soft); stroke-width: 1.2; }
+.network .bd-link.is-hot { stroke-width: 2; stroke: var(--c-amber); }
+.network .bd-link.is-redirect { stroke: var(--ct-amber); stroke-width: 1.6; stroke-dasharray: 3 2; }
+.network .bd-frame { fill: var(--paper); stroke: var(--line); stroke-width: 1.2; }
+.network .bd-frame.is-empty { fill: var(--fill-hover); stroke-dasharray: 3 3; }
+.network .bd-frame.is-dirty { fill: var(--eg-fill); }
+.network .bd-dirty { font-weight: 800; fill: var(--ct-amber); }
+.network .bd-pip { fill: var(--fill-track); stroke: var(--line-btn); stroke-width: 0.8; }
+.network .bd-pip.is-on { fill: var(--c-blue); stroke: var(--c-blue); }
+.network .bd-ref { font-weight: 700; fill: var(--ink-7); }
+.network .bd-ref.is-on { fill: var(--err-text); }
+.network .bd-hand { fill: var(--active); stroke: none; }
+.network .bd-node { fill: var(--paper); stroke: var(--art-line); stroke-width: 1.3; }
+.network .bd-node.is-leaf { fill: var(--fill-card); }
+.network .bd-key { fill: var(--paper); stroke: var(--line-btn); stroke-width: 1; }
+.network .bd-key.is-hot { fill: var(--c-amber); }
+.network .bd-key.is-high { fill: var(--fill-pill); stroke-dasharray: 3 2; }
+.network .bd-keyt.is-high { fill: var(--ink-5); font-style: italic; }
+.network .bd-edge { stroke: var(--art-line-soft); stroke-width: 1.3; }
+.network .bd-edge.is-hot { stroke: var(--c-amber); stroke-width: 2.6; }
+.network .bd-rightlink { stroke: var(--c-teal); stroke-width: 1.4; stroke-dasharray: 3 2; }
+.network .bd-xid { stroke: var(--line-btn); stroke-width: 1; }
+.network .bd-xid.is-committed { fill: var(--ok-fill); stroke: var(--c-green); }
+.network .bd-xid.is-running { fill: var(--eg-fill); stroke: var(--c-amber); }
+.network .bd-xid.is-aborted { fill: var(--err-fill); stroke: var(--err-line); }
+.network .bd-xid.is-future { fill: var(--fill-hover); stroke: var(--line-btn); stroke-dasharray: 3 2; }
+.network .bd-xid.in-xip { stroke-width: 2.6; }
+.network .bd-xid.is-me { stroke: var(--active); stroke-width: 2.6; }
+.network .bd-bracket { fill: none; stroke: var(--active); stroke-width: 1.6; }
+.network .bd-chip { fill: var(--fill-current); stroke: var(--line); stroke-width: 1; }
+.network .bd-chip.is-file { fill: var(--eg-fill); }
+.network .bd-chain { stroke: var(--line); stroke-width: 1.2; }
+.network .bd-bucket { fill: var(--fill-pill); stroke: var(--line-btn); stroke-width: 1; }
+.network .bd-bucket.is-hot, .network .bd-lane.is-hot { stroke: var(--c-amber); stroke-width: 2; }
+.network .bd-lane { fill: var(--paper); stroke: var(--line-faint); stroke-width: 1; }
+.network .bd-file { fill: var(--paper); stroke: var(--ct-amber); stroke-width: 1.1; stroke-dasharray: 4 2; }
+.network .bd-cell { fill: var(--paper); stroke: var(--line-btn); stroke-width: 1; }
+.network .bd-cell.is-muted { fill: var(--fill-hover); stroke-dasharray: 2 2; }
+.network .bd-gnode { fill: var(--paper); stroke: var(--art-line); stroke-width: 1.4; }
+.network .bd-wait { stroke: var(--line); stroke-width: 1.6; }
+.network .bd-arrow { fill: var(--line); stroke: none; }
+.network .bd-edge-bg { fill: var(--paper); stroke: none; }
+.network .bd-rec { fill: var(--eg-fill); stroke: var(--c-amber); stroke-width: 1.1; }
+.network .bd-rec.is-durable { fill: var(--ok-fill); stroke: var(--c-green); }
+.network .bd-rec.is-torn { fill: var(--err-fill); stroke: var(--err-line); stroke-dasharray: 4 2; }
+.network .bd-pmark { fill: var(--c-slate); }
+.network .bd-tnode { fill: var(--fill-current); stroke: var(--line); stroke-width: 1; }
+.network .bd-treeline { fill: none; stroke: var(--line); stroke-width: 1.1; }
+.network .bd-track { fill: var(--fill-hover); stroke: var(--line-faint); stroke-width: 1; }
+.network .bd-part { fill: var(--c-slate); }
+/* 色调：热点 = 刚发生变化的格子 */
+.network .t-blue.is-hot, .network .bd-part.t-blue, .network .bd-pmark.t-blue { fill: var(--c-blue); }
+.network .t-green.is-hot, .network .bd-part.t-green, .network .bd-pmark.t-green { fill: var(--c-green); }
+.network .t-amber.is-hot, .network .bd-part.t-amber, .network .bd-pmark.t-amber { fill: var(--c-amber); }
+.network .t-violet.is-hot, .network .bd-part.t-violet, .network .bd-pmark.t-violet { fill: var(--c-violet); }
+.network .t-teal.is-hot, .network .bd-part.t-teal, .network .bd-pmark.t-teal { fill: var(--c-teal); }
+.network .t-slate.is-hot, .network .bd-part.t-slate, .network .bd-pmark.t-slate { fill: var(--c-slate); }
+.network .t-red.is-hot, .network .bd-part.t-red, .network .bd-pmark.t-red { fill: var(--err-line); }
+.network .is-hot.t-blue { fill-opacity: 0.2; stroke: var(--c-blue); stroke-width: 2; }
+.network .is-hot.t-green { fill-opacity: 0.24; stroke: var(--c-green); stroke-width: 2; }
+.network .is-hot.t-amber { fill-opacity: 0.32; stroke: var(--c-amber); stroke-width: 2; }
+.network .is-hot.t-violet { fill-opacity: 0.2; stroke: var(--c-violet); stroke-width: 2; }
+.network .is-hot.t-teal { fill-opacity: 0.2; stroke: var(--c-teal); stroke-width: 2; }
+.network .is-hot.t-slate { fill-opacity: 0.2; stroke: var(--c-slate); stroke-width: 2; }
+.network .is-hot.t-red { fill-opacity: 0.22; stroke: var(--err-line); stroke-width: 2; }
+.network .bd-wait.t-red { stroke: var(--err-line); stroke-width: 2.4; }
+.network .bd-arrow.t-red { fill: var(--err-line); }
+.network .bd-wait.t-amber { stroke: var(--c-amber); stroke-width: 2.2; }
+.network .bd-arrow.t-amber { fill: var(--c-amber); }
+.network .bd-wait.t-green { stroke: var(--c-green); stroke-width: 2.2; }
+.network .bd-arrow.t-green { fill: var(--c-green); }
+.network .bd-link.is-hot.t-amber { stroke: var(--c-amber); fill: none; }
+.network .bd-link.is-hot.t-green { stroke: var(--c-green); fill: none; }
+.network .bd-link.is-hot.t-blue { stroke: var(--c-blue); fill: none; }
+.network .bd-link.is-hot.t-red { stroke: var(--err-line); fill: none; }
+.network .board-slot .is-hot { animation: board-hot 0.9s var(--ease-out) 1; }
+:root[data-layout='phone'] .network .cmd-holder, :root[data-layout='narrow'] .network .cmd-holder { display: none; }
+@keyframes board-hot { from { stroke-width: 4; } }
+@media (prefers-reduced-motion: reduce) { .network .board-slot .is-hot { animation: none; } }

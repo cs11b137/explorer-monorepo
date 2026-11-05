@@ -1,0 +1,17 @@
+/* 本站相对引擎样式的差异。引擎样式先加载，这里的规则在后面，同选择器时覆盖引擎。 */
+.brand-text h1 { font-size: 25px; line-height: 30px; font-weight: 800; letter-spacing: 0.07em; color: var(--ink); white-space: nowrap; }
+.now { width: 306px; flex-shrink: 0; }
+/* 产物面板：源码、token、语法树、表格、CFG、字节等都画在结构图里。 */
+.network .art-box { fill: var(--paper); stroke: var(--line); stroke-width: 1.2; }
+.network .art-title { font-weight: 800; letter-spacing: 0.04em; fill: var(--ink-strong); }
+.network .art-sub { font-weight: 600; fill: var(--ink-5); }
+.network .art-code { font-weight: 600; fill: var(--ink-strong); white-space: pre; }
+.network .art-label { font-weight: 800; fill: var(--ink-strong); white-space: pre; }
+.network .art-th { font-weight: 800; fill: var(--ink-3); }
+.network .art-note { font-weight: 500; fill: var(--ink-4); }
+.network .art-dim { font-weight: 500; fill: var(--ink-8); white-space: pre; }
+.network .art-gutter { font-weight: 500; fill: var(--ink-7); }
+.network .art-chip.is-dim { opacity: 0.45; }
+.network.is-narrow .lanes, .network.is-narrow .nodes, .network.is-narrow .pulse-layer, .network.is-narrow .packet-layer, .network.is-narrow .note-layer { visibility: hidden; }
+.panel-pager { position: absolute; top: 10px; inset-inline-end: 10px; z-index: 2; height: 30px; padding-inline: 9px; max-width: 58%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: 1px solid var(--line-btn); border-radius: 3px; background: var(--paper); font-size: 12px; font-weight: 800; color: var(--navy-text); cursor: pointer; }
+.simulation.is-sequence .panel-pager { display: none; }

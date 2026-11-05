@@ -1,0 +1,30 @@
+{
+  "name": "explorer-monorepo",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:e2e": "npm run test:e2e --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "dev:protocol": "npm run dev -w protocol-explorer",
+    "dev:os": "npm run dev -w os-explorer",
+    "dev:algo": "npm run dev -w algo-explorer",
+    "dev:codegen": "npm run dev -w codegen-explorer",
+    "dev:cpu": "npm run dev -w cpu-explorer",
+    "dev:db": "npm run dev -w db-explorer",
+    "mirror:protocol": "npm run mirror -w protocol-explorer",
+    "dev:all": "node scripts/dev-all.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^26.6.6",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.7",
+    "vitest": "^3.2.7"
+  }
+}

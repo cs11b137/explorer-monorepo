@@ -1,0 +1,10 @@
+{
+  "name": "DB Explorer · 看懂一条 SQL 如何被执行和保存",
+  "short_name": "DB Explorer",
+  "lang": "zh-CN",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fdfdfe",
+  "theme_color": "#003ca8",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

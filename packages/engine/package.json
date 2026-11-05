@@ -1,0 +1,11 @@
+{
+  "name": "@explorer/engine",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./styles/*": "./src/styles/*",
+    "./*": "./src/*.ts"
+  },
+  "scripts": { "typecheck": "tsc --noEmit" }
+}

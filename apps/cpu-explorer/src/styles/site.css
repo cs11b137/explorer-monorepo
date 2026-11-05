@@ -1,0 +1,75 @@
+/* 本站相对引擎样式的差异。引擎样式先加载，这里的规则在后面，同选择器时覆盖引擎。 */
+.packet-table .c-time { width: 110px; }
+.is-stacked:not(.is-single) .workspace { grid-template-columns: minmax(0, 1fr) 320px; grid-template-rows: clamp(560px, calc(100vh - 380px), 760px) 300px; }
+/* ---------- 位视图（检查器） ---------- */
+.bt-word { margin-bottom: 10px; }
+.bt-name { font-size: 11px; font-weight: 700; color: var(--ink-5); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bt-ticks, .bt-row { display: grid; grid-template-columns: repeat(var(--bits), minmax(0, min(11.5px, calc(100% / var(--bits))))); }
+.bt-ticks { font-size: 8.5px; line-height: 11px; color: var(--ink-7); }
+.bt-ticks span { text-align: center; white-space: nowrap; overflow: visible; }
+.bt.c-blue { --c: var(--c-blue); } .bt.c-green { --c: var(--c-green); } .bt.c-amber { --c: var(--c-amber); } .bt.c-violet { --c: var(--c-violet); } .bt.c-teal { --c: var(--c-teal); } .bt.c-slate { --c: var(--c-slate); }
+.bt { text-align: center; font-size: 10.5px; line-height: 17px; font-weight: 600; color: color-mix(in srgb, var(--c) 50%, var(--ink-8)); background: color-mix(in srgb, var(--c) 9%, transparent); cursor: default; }
+.bt.is-one { font-weight: 800; color: color-mix(in srgb, var(--c) 80%, var(--navy-text)); background: color-mix(in srgb, var(--c) 18%, transparent); }
+.bt.is-edge { box-shadow: inset 1px 0 0 color-mix(in srgb, var(--c) 45%, transparent); }
+.bt.is-lit { background: color-mix(in srgb, var(--c) 42%, transparent); color: var(--ink-strong); }
+/* ---------- 数值面板（结构图） ---------- */
+.wg-box { fill: var(--paper); stroke: var(--line-btn); stroke-width: 1.2; }
+.wg-rule { stroke: var(--line-soft); stroke-width: 1; fill: none; }
+.wg-rowline { stroke: var(--line-faint); stroke-width: 1; fill: none; }
+.wg-title { font-size: 12px; font-weight: 800; letter-spacing: 0.02em; fill: var(--ink-strong); dominant-baseline: central; }
+.wg-key { font-size: 13px; font-weight: 700; fill: var(--ink-6); dominant-baseline: central; }
+.wg-head { font-size: 11.5px; font-weight: 800; fill: var(--ink-6); dominant-baseline: central; }
+.wg-text { font-size: 13px; font-weight: 700; fill: var(--ink-strong); dominant-baseline: central; }
+.wg-text.t-dim { fill: var(--ink-8); font-weight: 500; }
+.wg-text.t-blue { fill: var(--c-blue); }
+.wg-text.t-green { fill: var(--c-green); }
+.wg-text.t-amber { fill: color-mix(in srgb, var(--c-amber) 72%, var(--ink-strong)); }
+.wg-text.t-violet { fill: var(--c-violet); }
+.wg-text.t-teal { fill: var(--c-teal); }
+.wg-text.t-slate { fill: var(--c-slate); }
+.wg-text.t-red { fill: var(--err-text); }
+.wg-text.on-solid { fill: #fff; }
+.wg-text.on-solid.t-amber { fill: var(--on-amber); }
+.wg-cell { fill: transparent; }
+.wg-cell.is-solid { fill: var(--c-blue); }
+.wg-cell.is-solid.t-green { fill: var(--c-green); }
+.wg-cell.is-solid.t-amber { fill: var(--c-amber); }
+.wg-cell.is-solid.t-violet { fill: var(--c-violet); }
+.wg-cell.is-solid.t-teal { fill: var(--c-teal); }
+.wg-cell.is-solid.t-slate { fill: var(--c-slate); }
+.wg-cell.is-solid.t-red { fill: var(--err-line); }
+.wg-cell.is-fresh:not(.is-solid) { animation: wg-flash 0.9s var(--ease-out) both; }
+.wg-cell.is-fresh.is-solid { animation: wg-pop 0.5s var(--ease-out); transform-box: fill-box; transform-origin: center; }
+@keyframes wg-flash { from { fill: color-mix(in srgb, var(--c-amber) 70%, transparent); } to { fill: transparent; } }
+@keyframes wg-pop { from { opacity: 0.25; } }
+.wg-seg { font-size: 10.5px; font-weight: 800; fill: var(--ink-6); dominant-baseline: central; }
+.wg-seg.t-blue { fill: var(--c-blue); } .wg-seg.t-green { fill: var(--c-green); } .wg-seg.t-amber { fill: color-mix(in srgb, var(--c-amber) 72%, var(--ink-strong)); }
+.wg-seg.t-violet { fill: var(--c-violet); } .wg-seg.t-teal { fill: var(--c-teal); } .wg-seg.t-slate { fill: var(--c-slate); } .wg-seg.t-red { fill: var(--err-text); }
+.wg-segbox { fill: color-mix(in srgb, var(--c-slate) 10%, transparent); stroke: var(--c-slate); stroke-width: 1; }
+.wg-segbox.t-blue { fill: color-mix(in srgb, var(--c-blue) 11%, transparent); stroke: var(--c-blue); }
+.wg-segbox.t-green { fill: color-mix(in srgb, var(--c-green) 12%, transparent); stroke: var(--c-green); }
+.wg-segbox.t-amber { fill: color-mix(in srgb, var(--c-amber) 16%, transparent); stroke: var(--c-amber); }
+.wg-segbox.t-violet { fill: color-mix(in srgb, var(--c-violet) 11%, transparent); stroke: var(--c-violet); }
+.wg-segbox.t-teal { fill: color-mix(in srgb, var(--c-teal) 12%, transparent); stroke: var(--c-teal); }
+.wg-segbox.t-red { fill: color-mix(in srgb, var(--err-line) 12%, transparent); stroke: var(--err-line); }
+.wg-segbox.t-dim { fill: transparent; stroke: var(--line-btn); }
+.wg-bit { font-size: 13px; font-weight: 500; fill: var(--ink-7); dominant-baseline: central; }
+.wg-bit.is-one { font-weight: 800; fill: var(--ink-strong); }
+.wg-tick { font-size: 8.5px; font-weight: 600; fill: var(--ink-7); dominant-baseline: central; }
+.wg-caption { font-size: 12.5px; font-weight: 700; fill: var(--ink-3); dominant-baseline: central; }
+.state-strip { display: none; }
+.simulation.is-strip .network { height: 32%; }
+.simulation.is-strip .state-strip { position: absolute; inset: 32% 0 0 0; display: flex; flex-wrap: wrap; align-content: flex-start; align-items: flex-start; gap: 8px; padding: 8px 10px 12px; overflow-y: auto; border-top: 1px solid var(--line-soft); scrollbar-width: thin; scrollbar-color: var(--line-mid) transparent; }
+.simulation.is-strip .view-switch { z-index: 4; }
+.strip-item { flex: 1 1 calc(var(--w) * 0.82px); max-width: calc(var(--w) * 1px); min-width: 0; }
+.strip-row { display: flex; flex: 1 1 100%; align-items: flex-start; gap: 6px; min-width: 0; }
+.strip-row .strip-item { flex: var(--w) 1 0; max-width: none; }
+.is-single .strip-item { max-width: calc(var(--w) * 1.25px); overflow-x: auto; scrollbar-width: thin; scrollbar-color: var(--line-mid) transparent; }
+.is-single .strip-row { flex-wrap: wrap; gap: 8px; }
+.is-single .strip-row .strip-item { flex: 1 1 calc(var(--w) * 0.82px); max-width: calc(var(--w) * 1.25px); }
+.is-single .wg-svg { min-width: calc(var(--w) * 0.78px); }
+.wg-svg { display: block; width: 100%; height: auto; overflow: visible; }
+.is-single .simulation.is-strip { height: auto; min-height: 520px; }
+.is-single .simulation.is-strip .network { position: relative; height: 240px; }
+.is-single .simulation.is-strip .state-strip { position: relative; inset: auto; overflow: visible; }
+@media (prefers-reduced-motion: reduce) { .wg-cell.is-fresh { animation: none !important; } }

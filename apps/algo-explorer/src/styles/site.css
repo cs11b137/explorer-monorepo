@@ -1,0 +1,62 @@
+/* 本站相对引擎样式的差异。引擎样式先加载，这里的规则在后面，同选择器时覆盖引擎。 */
+:root {
+  --ds-plain-top: #f4f7fe;
+  --ds-plain-left: #dae5fb;
+  --ds-plain-right: #c7d7f6;
+  --ds-floor-top: #edf2fc;
+  --ds-floor-left: #dfe8fb;
+  --ds-floor-right: #d2def7;
+}
+:root[data-theme='dark'] {
+  --ds-plain-top: #1c2a4a;
+  --ds-plain-left: #142038;
+  --ds-plain-right: #0f192d;
+  --ds-floor-top: #111b31;
+  --ds-floor-left: #0e172a;
+  --ds-floor-right: #0c1423;
+}
+.network .cmd-bar { opacity: 0; scale: 0.8; transform-box: fill-box; transform-origin: 40% 100%; transition: opacity 0.25s, scale 0.45s var(--ease-out); }
+/* ---------- 数据结构图元 ---------- */
+.network .ds-c { --ds-top: var(--ds-plain-top); --ds-left: var(--ds-plain-left); --ds-right: var(--ds-plain-right); --ds-line: var(--art-line); --ds-ink: var(--ink-strong); }
+.network .ds-blue { --ds-top: var(--c-blue); --ds-left: color-mix(in srgb, var(--c-blue) 72%, #06205f); --ds-right: color-mix(in srgb, var(--c-blue) 52%, #06205f); --ds-ink: #fff; }
+.network .ds-green { --ds-top: var(--c-green); --ds-left: color-mix(in srgb, var(--c-green) 72%, #063b2a); --ds-right: color-mix(in srgb, var(--c-green) 52%, #063b2a); --ds-ink: #fff; }
+.network .ds-amber { --ds-top: var(--c-amber); --ds-left: color-mix(in srgb, var(--c-amber) 76%, #6a4400); --ds-right: color-mix(in srgb, var(--c-amber) 56%, #6a4400); --ds-ink: var(--on-amber); }
+.network .ds-violet { --ds-top: var(--c-violet); --ds-left: color-mix(in srgb, var(--c-violet) 72%, #1f1060); --ds-right: color-mix(in srgb, var(--c-violet) 52%, #1f1060); --ds-ink: #fff; }
+.network .ds-teal { --ds-top: var(--c-teal); --ds-left: color-mix(in srgb, var(--c-teal) 72%, #063a44); --ds-right: color-mix(in srgb, var(--c-teal) 52%, #063a44); --ds-ink: #fff; }
+.network .ds-slate { --ds-top: var(--c-slate); --ds-left: color-mix(in srgb, var(--c-slate) 72%, #16223c); --ds-right: color-mix(in srgb, var(--c-slate) 52%, #16223c); --ds-ink: #fff; }
+.network .ds-head { --ds-top: var(--art-navy); --ds-left: var(--art-navy); --ds-right: var(--art-navy-2); --ds-ink: var(--art-paper); }
+.network .ds-dim { opacity: 0.42; }
+.network .ds-socket { --ds-socket-top: var(--ds-floor-top); --ds-socket-left: var(--ds-floor-left); --ds-socket-right: var(--ds-floor-right); --ds-socket-line: var(--art-line-soft); }
+.network .ds-v { fill: var(--ds-ink); }
+.network .ds-sub { fill: var(--ink-6); font-weight: 600; }
+.network .ds-title { font-size: 12.5px; font-weight: 700; fill: var(--ink-3); letter-spacing: 0.03em; }
+.network .ds-node-sub { font-size: 12.5px; font-weight: 700; fill: var(--ink-2); paint-order: stroke; stroke: var(--panel); stroke-width: 3px; stroke-linejoin: round; }
+.network .ds-plate { fill: var(--ds-floor-top); stroke: var(--art-line-soft); stroke-width: 1.2; stroke-dasharray: 4 4; }
+.network .ds-edge { stroke: var(--art-line-soft); stroke-width: 2.2; stroke-linecap: round; transition: stroke 0.3s; }
+.network .ds-e-blue { stroke: var(--c-blue); stroke-width: 3; }
+.network .ds-e-green { stroke: var(--c-green); stroke-width: 3; }
+.network .ds-e-amber { stroke: var(--c-amber); stroke-width: 3; }
+.network .ds-e-violet { stroke: var(--c-violet); stroke-width: 3; }
+.network .ds-e-teal { stroke: var(--c-teal); stroke-width: 3; }
+.network .ds-e-slate { stroke: var(--c-slate); stroke-width: 2.6; }
+.network .ds-e-dim { opacity: 0.35; stroke-dasharray: 5 5; }
+.network .ds-pin { stroke-width: 1.6; }
+.network .ds-pin.blue { stroke: var(--c-blue); }
+.network .ds-pin.green { stroke: var(--c-green); }
+.network .ds-pin.amber { stroke: var(--c-amber); }
+.network .ds-pin.violet { stroke: var(--c-violet); }
+.network .ds-pin.teal { stroke: var(--c-teal); }
+.network .ds-pin.slate { stroke: var(--c-slate); }
+.network .ds-mark rect, .network .ds-weight rect { stroke-width: 1.4; }
+.network .ds-mark text { font-size: 12px; font-weight: 800; letter-spacing: 0.02em; fill: #fff; }
+.network .ds-mark.amber text { fill: var(--on-amber); }
+.network .ds-mark.blue rect { fill: var(--c-blue); stroke: var(--c-blue); }
+.network .ds-mark.green rect { fill: var(--c-green); stroke: var(--c-green); }
+.network .ds-mark.amber rect { fill: var(--c-amber); stroke: var(--c-amber); }
+.network .ds-mark.violet rect { fill: var(--c-violet); stroke: var(--c-violet); }
+.network .ds-mark.teal rect { fill: var(--c-teal); stroke: var(--c-teal); }
+.network .ds-mark.slate rect { fill: var(--c-slate); stroke: var(--c-slate); }
+.network .ds-weight rect { fill: var(--paper); stroke: var(--line-btn); }
+.network .ds-weight text { font-size: 12px; font-weight: 800; fill: var(--ink-strong); }
+.packet-table .c-ops { width: 78px; }
+:root:not([data-layout='wide']) .packet-table .c-ops { width: 66px; }

@@ -1,0 +1,16 @@
+export const ICONS = {
+  dots: '<svg viewBox="0 0 20 6" width="20" height="6" aria-hidden="true"><circle cx="3" cy="3" r="2.1"/><circle cx="10" cy="3" r="2.1"/><circle cx="17" cy="3" r="2.1"/></svg>',
+  back: '<svg viewBox="0 0 8 12" width="7" height="11" aria-hidden="true"><path d="M6.5 1.2 1.7 6l4.8 4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  chev: '<svg viewBox="0 0 10 16" width="9" height="14" aria-hidden="true"><path d="M2 2l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  check: '<svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path pathLength="1" d="M2.2 6.4l2.4 2.4 5.2-5.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  reset: '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M13.2 8a5.2 5.2 0 1 1-1.6-3.75M11.8 1.6v2.9H8.9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  sun: '<svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><circle cx="10" cy="10" r="3.6" fill="currentColor"/><path d="M10 1.6v2.2M10 16.2v2.2M1.6 10h2.2M16.2 10h2.2M4.1 4.1l1.5 1.5M14.4 14.4l1.5 1.5M4.1 15.9l1.5-1.5M14.4 5.6l1.5-1.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  moon: '<svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true"><path d="M16.5 12.4A7 7 0 0 1 7.6 3.5a7 7 0 1 0 8.9 8.9Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
+  close: '<svg viewBox="0 0 14 14" width="13" height="13" aria-hidden="true"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  menu: '<svg viewBox="0 0 18 14" width="18" height="14" aria-hidden="true"><path d="M1.5 2h15M1.5 7h15M1.5 12h15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  prev: '<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M7.8 1.8 3.6 6l4.2 4.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  layers: '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 1.8 14 5 8 8.2 2 5Zm-6 6.6 6 3.2 6-3.2M2 11.6l6 3.2 6-3.2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>',
+  sequence: '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3 1.5v13M13 1.5v13" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2 2"/><path d="M3.4 5H12M9.6 3 12 5 9.6 7M12.6 11H4M6.4 9 4 11l2.4 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  lock: '<svg class="pill-lock" viewBox="0 0 12 14" width="10" height="12" aria-hidden="true"><path d="M3 6.5v-2a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="1.5" y="6.5" width="9" height="6.5" rx="1.3" fill="currentColor"/></svg>',
+  external: '<svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M4.5 2H2v8h8V7.5M6.5 2H10v3.5M10 2 5.5 6.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+};

@@ -1,0 +1,84 @@
+int 'int'	 [StartOfLine]	Loc=<sum.c:1:1>
+identifier 'total'	 [LeadingSpace]	Loc=<sum.c:1:5>
+semi ';'		Loc=<sum.c:1:10>
+int 'int'	 [StartOfLine]	Loc=<sum.c:2:1>
+identifier 'scale'	 [LeadingSpace]	Loc=<sum.c:2:5>
+l_paren '('		Loc=<sum.c:2:10>
+int 'int'		Loc=<sum.c:2:11>
+identifier 'v'	 [LeadingSpace]	Loc=<sum.c:2:15>
+r_paren ')'		Loc=<sum.c:2:16>
+semi ';'		Loc=<sum.c:2:17>
+int 'int'	 [StartOfLine]	Loc=<sum.c:4:1>
+identifier 'sum'	 [LeadingSpace]	Loc=<sum.c:4:5>
+l_paren '('		Loc=<sum.c:4:8>
+int 'int'		Loc=<sum.c:4:9>
+identifier 'n'	 [LeadingSpace]	Loc=<sum.c:4:13>
+r_paren ')'		Loc=<sum.c:4:14>
+l_brace '{'	 [LeadingSpace]	Loc=<sum.c:4:16>
+int 'int'	 [StartOfLine] [LeadingSpace]	Loc=<sum.c:5:3>
+identifier 'k'	 [LeadingSpace]	Loc=<sum.c:5:7>
+equal '='	 [LeadingSpace]	Loc=<sum.c:5:9>
+numeric_constant '2'	 [LeadingSpace]	Loc=<sum.c:5:11>
+semi ';'		Loc=<sum.c:5:12>
+int 'int'	 [StartOfLine] [LeadingSpace]	Loc=<sum.c:6:3>
+identifier 'm'	 [LeadingSpace]	Loc=<sum.c:6:7>
+equal '='	 [LeadingSpace]	Loc=<sum.c:6:9>
+identifier 'k'	 [LeadingSpace]	Loc=<sum.c:6:11>
+star '*'	 [LeadingSpace]	Loc=<sum.c:6:13>
+numeric_constant '3'	 [LeadingSpace]	Loc=<sum.c:6:15>
+semi ';'		Loc=<sum.c:6:16>
+int 'int'	 [StartOfLine] [LeadingSpace]	Loc=<sum.c:7:3>
+identifier 'd'	 [LeadingSpace]	Loc=<sum.c:7:7>
+equal '='	 [LeadingSpace]	Loc=<sum.c:7:9>
+identifier 'm'	 [LeadingSpace]	Loc=<sum.c:7:11>
+plus '+'	 [LeadingSpace]	Loc=<sum.c:7:13>
+numeric_constant '1'	 [LeadingSpace]	Loc=<sum.c:7:15>
+semi ';'		Loc=<sum.c:7:16>
+int 'int'	 [StartOfLine] [LeadingSpace]	Loc=<sum.c:8:3>
+identifier 's'	 [LeadingSpace]	Loc=<sum.c:8:7>
+equal '='	 [LeadingSpace]	Loc=<sum.c:8:9>
+numeric_constant '0'	 [LeadingSpace]	Loc=<sum.c:8:11>
+semi ';'		Loc=<sum.c:8:12>
+int 'int'	 [StartOfLine] [LeadingSpace]	Loc=<sum.c:9:3>
+identifier 'i'	 [LeadingSpace]	Loc=<sum.c:9:7>
+equal '='	 [LeadingSpace]	Loc=<sum.c:9:9>
+numeric_constant '0'	 [LeadingSpace]	Loc=<sum.c:9:11>
+semi ';'		Loc=<sum.c:9:12>
+while 'while'	 [StartOfLine] [LeadingSpace]	Loc=<sum.c:10:3>
+l_paren '('	 [LeadingSpace]	Loc=<sum.c:10:9>
+identifier 'i'		Loc=<sum.c:10:10>
+less '<'	 [LeadingSpace]	Loc=<sum.c:10:12>
+identifier 'n'	 [LeadingSpace]	Loc=<sum.c:10:14>
+r_paren ')'		Loc=<sum.c:10:15>
+l_brace '{'	 [LeadingSpace]	Loc=<sum.c:10:17>
+identifier 's'	 [StartOfLine] [LeadingSpace]	Loc=<sum.c:11:5>
+equal '='	 [LeadingSpace]	Loc=<sum.c:11:7>
+identifier 's'	 [LeadingSpace]	Loc=<sum.c:11:9>
+plus '+'	 [LeadingSpace]	Loc=<sum.c:11:11>
+identifier 'm'	 [LeadingSpace]	Loc=<sum.c:11:13>
+star '*'	 [LeadingSpace]	Loc=<sum.c:11:15>
+identifier 'n'	 [LeadingSpace]	Loc=<sum.c:11:17>
+plus '+'	 [LeadingSpace]	Loc=<sum.c:11:19>
+identifier 'i'	 [LeadingSpace]	Loc=<sum.c:11:21>
+semi ';'		Loc=<sum.c:11:22>
+identifier 'i'	 [StartOfLine] [LeadingSpace]	Loc=<sum.c:12:5>
+equal '='	 [LeadingSpace]	Loc=<sum.c:12:7>
+identifier 'i'	 [LeadingSpace]	Loc=<sum.c:12:9>
+plus '+'	 [LeadingSpace]	Loc=<sum.c:12:11>
+numeric_constant '1'	 [LeadingSpace]	Loc=<sum.c:12:13>
+semi ';'		Loc=<sum.c:12:14>
+r_brace '}'	 [StartOfLine] [LeadingSpace]	Loc=<sum.c:13:3>
+identifier 'total'	 [StartOfLine] [LeadingSpace]	Loc=<sum.c:14:3>
+equal '='	 [LeadingSpace]	Loc=<sum.c:14:9>
+identifier 's'	 [LeadingSpace]	Loc=<sum.c:14:11>
+semi ';'		Loc=<sum.c:14:12>
+return 'return'	 [StartOfLine] [LeadingSpace]	Loc=<sum.c:15:3>
+identifier 'scale'	 [LeadingSpace]	Loc=<sum.c:15:10>
+l_paren '('		Loc=<sum.c:15:15>
+identifier 's'		Loc=<sum.c:15:16>
+r_paren ')'		Loc=<sum.c:15:17>
+plus '+'	 [LeadingSpace]	Loc=<sum.c:15:19>
+identifier 'n'	 [LeadingSpace]	Loc=<sum.c:15:21>
+semi ';'		Loc=<sum.c:15:22>
+r_brace '}'	 [StartOfLine]	Loc=<sum.c:16:1>
+eof ''		Loc=<sum.c:16:2>

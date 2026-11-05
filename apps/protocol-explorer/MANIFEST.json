@@ -1,0 +1,286 @@
+{
+  "origin": "https://protocol-explorer-alpha.vercel.app",
+  "mirroredAt": "2026-11-05T07:49:58.847Z",
+  "files": [
+    {
+      "path": "/apple-touch-icon.png",
+      "bytes": 2873,
+      "sha256": "0977b763a7ecb969bbd23c10b9944feadfb534f327f12cf37387b8049a74ca87",
+      "contentType": "image/png",
+      "etag": "\"e15a7508b5f45f72eb5f948a11dc63c6\""
+    },
+    {
+      "path": "/assets/ar-DJOoOqcu.js",
+      "bytes": 129148,
+      "sha256": "263f216d13fbc46150129b02a0ca5623498555be298fd82e9f489a1ea99011c4",
+      "contentType": "application/javascript; charset=utf-8",
+      "etag": "W/\"779544142899e41b59bde3874052a112\""
+    },
+    {
+      "path": "/assets/de-CmzSWb4J.js",
+      "bytes": 110943,
+      "sha256": "964704c98819846925510364164ac92691e71ad89b328051dd0e264e02fa5449",
+      "contentType": "application/javascript; charset=utf-8",
+      "etag": "W/\"18c77899076268ba41077d42b4c0796e\""
+    },
+    {
+      "path": "/assets/es-CmMye5uh.js",
+      "bytes": 110198,
+      "sha256": "97e424f89118d13e55fe037ace07b167307c788536563ebe0b01da4e1df5b9b4",
+      "contentType": "application/javascript; charset=utf-8",
+      "etag": "W/\"ffcda940faedeac6ad25e354c9638ecd\""
+    },
+    {
+      "path": "/assets/fr-B5qShCVA.js",
+      "bytes": 113730,
+      "sha256": "efde0002c9d00f2fc94aa29af7df3766e673f6dbcf4275457072be5130887f64",
+      "contentType": "application/javascript; charset=utf-8",
+      "etag": "W/\"b228090a9f368305ddfe5a5954eb6eae\""
+    },
+    {
+      "path": "/assets/he-B1CX7NZ9.js",
+      "bytes": 122515,
+      "sha256": "88e20c638380dc0953647d5413fa1a047fb310d6f4fc2109f1bbbd79c8984cf6",
+      "contentType": "application/javascript; charset=utf-8",
+      "etag": "W/\"14589effeb504e81b862635e513bc618\""
+    },
+    {
+      "path": "/assets/hi-CyvTH2W2.js",
+      "bytes": 169206,
+      "sha256": "0e774829d7aa00788ccf90c111ab534c5581ebf4edc3c17a0ea3187ad71fbb62",
+      "contentType": "application/javascript; charset=utf-8",
+      "etag": "W/\"4127f92750e632d7d055e927cbc55e07\""
+    },
+    {
+      "path": "/assets/id-CqsMwoR_.js",
+      "bytes": 107922,
+      "sha256": "fc2e969b4110907f44ea25e4496de27d1e805bac550478a8d50f9c430ece999f",
+      "contentType": "application/javascript; charset=utf-8",
+      "etag": "W/\"4520745b76a03ccf2aaf4b0b9464d44e\""
+    },
+    {
+      "path": "/assets/index-C1vckX_Q.css",
+      "bytes": 61060,
+      "sha256": "fbc34d05769190178813ab67f708b1a6a82dc882468c7b33a085af4b432a58a8",
+      "contentType": "text/css; charset=utf-8",
+      "etag": "W/\"8f2449ec9a73b373a5a731034476ecdf\""
+    },
+    {
+      "path": "/assets/index-T6io6WnP.js",
+      "bytes": 218717,
+      "sha256": "62227e6b7a4dafdd8952d2e764ec60a0fa3e7067d4094abb810029543e10dbb9",
+      "contentType": "application/javascript; charset=utf-8",
+      "etag": "W/\"a618db151df7a1615c3824be6c6af03e\""
+    },
+    {
+      "path": "/assets/iosevka-400-DnzhOSIo.woff2",
+      "bytes": 75928,
+      "sha256": "702dd65ac2b6c475ed3e5dbf9a3db637ba121e18cb36e1c4dc763d849d0fe0a2",
+      "contentType": "font/woff2",
+      "etag": "\"500a7c18ace5a938ac248f5e4742903b\""
+    },
+    {
+      "path": "/assets/iosevka-500-C4FA_zML.woff2",
+      "bytes": 76056,
+      "sha256": "e6ab7223714d87352a3b5601dc6974ef0515c069cb1f1c57f5f3ad7503cee11d",
+      "contentType": "font/woff2",
+      "etag": "\"c21a25d83d61ba35c751bf81214d5f2d\""
+    },
+    {
+      "path": "/assets/iosevka-600-Dj5n5yBL.woff2",
+      "bytes": 75844,
+      "sha256": "30d93b6c22d1ff507f66738b526c6c8ca5b90bcb997f8943819ee6787ddf99d3",
+      "contentType": "font/woff2",
+      "etag": "\"73e6caa38f20b65eb22cd5666d8694de\""
+    },
+    {
+      "path": "/assets/iosevka-700-BxdwZZnN.woff2",
+      "bytes": 75672,
+      "sha256": "0e4f1ad1048d745e2b0d9bddcb71bffc4796923ea2eb70c825cb9ff210e2b155",
+      "contentType": "font/woff2",
+      "etag": "\"fc84bbeb4f1edd66a3987d5e70469cc6\""
+    },
+    {
+      "path": "/assets/iosevka-800-Ctjohn3a.woff2",
+      "bytes": 75492,
+      "sha256": "29f9603e5adda955490e9007913dbae76fe8892409ce1e8b460144e3c0d260bc",
+      "contentType": "font/woff2",
+      "etag": "\"354bcaf411f0fc6b350636f90baf3d3a\""
+    },
+    {
+      "path": "/assets/iosevka-800-italic-D0Mo0HIB.woff2",
+      "bytes": 84244,
+      "sha256": "96c0912e56099dc4889458fd2218ac60ccedc60f98beaf448b47974a44780f30",
+      "contentType": "font/woff2",
+      "etag": "\"4c8f698721b24c2d491375fef3298283\""
+    },
+    {
+      "path": "/assets/iosevka-cyrillic-400-BRUvrZdD.woff2",
+      "bytes": 10376,
+      "sha256": "884f17d0aa30f951f8e8c1e32e40c6cb8c04e81295d3edb3b51b6e858b90488f",
+      "contentType": "font/woff2",
+      "etag": "\"7f3721c118e8bf5a91bf1443cae0d1ee\""
+    },
+    {
+      "path": "/assets/iosevka-cyrillic-500-k2u6RSy5.woff2",
+      "bytes": 10400,
+      "sha256": "8a68157b8e449f0a0c5f4fb977786bc2798c1e24f1e6f24d7aff66353cf6e44f",
+      "contentType": "font/woff2",
+      "etag": "\"65688cb1b30871fd33a180322f26c8ce\""
+    },
+    {
+      "path": "/assets/iosevka-cyrillic-600-BhfwcpRd.woff2",
+      "bytes": 10292,
+      "sha256": "c2c5691d0b85a34c5f2cd5daa89658652d1d9d412a57ef626192fd1d1f00e4ba",
+      "contentType": "font/woff2",
+      "etag": "\"0e03409856ee7c27fc01ac1283a0f153\""
+    },
+    {
+      "path": "/assets/iosevka-cyrillic-700-CQSi7oL_.woff2",
+      "bytes": 10432,
+      "sha256": "7ef47d4490789d91d570209629c5adde7eea98684f0cbd8de6372898816a28cf",
+      "contentType": "font/woff2",
+      "etag": "\"fe738d08d219b326cdcb954e212afc6d\""
+    },
+    {
+      "path": "/assets/iosevka-cyrillic-800-D3C0C3o1.woff2",
+      "bytes": 10500,
+      "sha256": "fc6f7cfab3cb61a4cc536e46328704f9935278b9be15dda2c75452e139b086c6",
+      "contentType": "font/woff2",
+      "etag": "\"54a069ca01de5dfc6f3ed4d845c37d9b\""
+    },
+    {
+      "path": "/assets/iosevka-cyrillic-800-italic-BEuStPU_.woff2",
+      "bytes": 11968,
+      "sha256": "2cb8b5eb1d87d77f18b8d9c71661913d45fbc760f6c9181f14b2513543cc8e0f",
+      "contentType": "font/woff2",
+      "etag": "\"d19a644865592527998bd601c34ee70e\""
+    },
+    {
+      "path": "/assets/ja-BpZbDnEp.js",
+      "bytes": 125132,
+      "sha256": "616bc7ae9f08ffe9421157fedd6ef1996a33c2c1fdde72f5ccdfe96771bc83a4",
+      "contentType": "application/javascript; charset=utf-8",
+      "etag": "W/\"df806682e9ca0fa5b3daa41fe4235c6b\""
+    },
+    {
+      "path": "/assets/ko-ePBoS2Fl.js",
+      "bytes": 116008,
+      "sha256": "3524311dfd37e05f93b206378ffccded5667859490b6b51c2e9fbc16fd73e602",
+      "contentType": "application/javascript; charset=utf-8",
+      "etag": "W/\"67b944c36a67ec2edba62fe7d4688200\""
+    },
+    {
+      "path": "/assets/pt-Dp_eYoXC.js",
+      "bytes": 109597,
+      "sha256": "4b4e04d2f9e8e3b93cab44e73dba2aa99cb3fc870f8a0d969dfb06056b370942",
+      "contentType": "application/javascript; charset=utf-8",
+      "etag": "W/\"d3754732607d122a973d3d7577b911c4\""
+    },
+    {
+      "path": "/assets/shared-CAKwAg2C.js",
+      "bytes": 1334,
+      "sha256": "13c380637146e9dce77b9c092b62b5f7599e3f334f6fa3a3f6948b6884aca587",
+      "contentType": "application/javascript; charset=utf-8",
+      "etag": "W/\"9c071016aaaa9da94491e0d9d63a8f77\""
+    },
+    {
+      "path": "/assets/tr-CsJTW4il.js",
+      "bytes": 111071,
+      "sha256": "3eaed5c97098582de75e7d923b71f07c61b768dfc0133978edb2614c28d84f93",
+      "contentType": "application/javascript; charset=utf-8",
+      "etag": "W/\"334d300510b33bf647d024e07a50b3b4\""
+    },
+    {
+      "path": "/assets/uk-DxDqKRPZ.js",
+      "bytes": 142953,
+      "sha256": "a224f53ae440805a3d157c122b7cb88afa41a96b3c96f458ff4b721c7510c28d",
+      "contentType": "application/javascript; charset=utf-8",
+      "etag": "W/\"a5a454962cf93c61df4ca73078f48db3\""
+    },
+    {
+      "path": "/assets/zh-BAT00yzb.js",
+      "bytes": 105787,
+      "sha256": "15a538ca4dab656cda751cafc1f4cac5a37a812c44acab43ffe2f70723498bb7",
+      "contentType": "application/javascript; charset=utf-8",
+      "etag": "W/\"b833839e2198fd0cbdc018b3cc20087b\""
+    },
+    {
+      "path": "/assets/zh-TW-DwAkXE0B.js",
+      "bytes": 107083,
+      "sha256": "2a392b6f7b69b3eb77f70851d21780b448274b71ddbb3d9bc2a4d49cad2cd09e",
+      "contentType": "application/javascript; charset=utf-8",
+      "etag": "W/\"31fb034ae71dfeace5c9714b272fe0aa\""
+    },
+    {
+      "path": "/favicon.ico",
+      "bytes": 4159,
+      "sha256": "e2872e74d90baeae3237a4ea0fd298507ab3b669df6ec8934e7c9e2779ea551e",
+      "contentType": "image/vnd.microsoft.icon",
+      "etag": "W/\"d0d7227e804e09d160a08ccf53ad7b44\""
+    },
+    {
+      "path": "/favicon.svg",
+      "bytes": 601,
+      "sha256": "a83a2c063ba4a1f26cdabc96a50074496ab80d77aa1c34fda71d143138f3a705",
+      "contentType": "image/svg+xml",
+      "etag": "\"17308a9c1849ecf11d45703d6d7021eb\""
+    },
+    {
+      "path": "/icon-192.png",
+      "bytes": 3706,
+      "sha256": "3343f13a51129dd6135bee942625c80e96cef95b9e5fa75f869eb7a00eb04ab5",
+      "contentType": "image/png",
+      "etag": "\"f1488e16beaf6a4d597555180a92384c\""
+    },
+    {
+      "path": "/icon-512.png",
+      "bytes": 10683,
+      "sha256": "76cbf02f338a8f44c6c5e94d194c2df84bc1fcd353af9fcec667ee95948d5367",
+      "contentType": "image/png",
+      "etag": "\"95fb0f873644b20a04028873194a966b\""
+    },
+    {
+      "path": "/icon-maskable-512.png",
+      "bytes": 11018,
+      "sha256": "1c7a88276e06976c08150e9d9f5cf8fa69bbac90ad382912c9f4169928e5aa5d",
+      "contentType": "image/png",
+      "etag": "\"fa0504ed62ab8ad26036524aa68b8d32\""
+    },
+    {
+      "path": "/index.html",
+      "bytes": 5968,
+      "sha256": "9eb5e529c5dca438ec6c50a497a834728fafad6a64d54cf86258aaebb19b3b7a",
+      "contentType": "text/html; charset=utf-8",
+      "etag": "W/\"60e576a146410c9b927f6c589c2a06e1\""
+    },
+    {
+      "path": "/og.png",
+      "bytes": 254238,
+      "sha256": "4ab7c6ccf91759178f947802aa4fe8ffa72dfe9b23ae8499b4976559a87da428",
+      "contentType": "image/png",
+      "etag": "\"400bd383f774009dd4c1c40f8e3a9805\""
+    },
+    {
+      "path": "/robots.txt",
+      "bytes": 88,
+      "sha256": "81ef94fc081e3798f7df21c5653e437f0a2ee2b146720fcccd6d850bf580e4cb",
+      "contentType": "text/plain; charset=utf-8",
+      "etag": "\"b26ac59bc29d1c327e384f84908eb161\""
+    },
+    {
+      "path": "/site.webmanifest",
+      "bytes": 563,
+      "sha256": "112c76b55bbce49c756d6812280c72bf0139aaeb0573bf77894b35238c475dca",
+      "contentType": "application/manifest+json; charset=utf-8",
+      "etag": "\"f8fd93b3c956ccc8feaa6ac121c25c65\""
+    },
+    {
+      "path": "/sitemap.xml",
+      "bytes": 178,
+      "sha256": "defd517a3c3502f057f57427defbf97749f2f95639642199c3516367b59b4c41",
+      "contentType": "application/xml",
+      "etag": "\"ecff0f0c57811ecd4b3a2875cf84405a\""
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+
+ours.o:	file format elf64-x86-64
+
+Sections:
+Idx Name            Size     VMA              Type
+  0                 00000000 0000000000000000 
+  1 .strtab         00000041 0000000000000000 
+  2 .text           0000003a 0000000000000000 TEXT
+  3 .rela.text      00000030 0000000000000000 
+  4 .bss            00000004 0000000000000000 BSS
+  5 .note.GNU-stack 00000000 0000000000000000 
+  6 .symtab         00000060 0000000000000000 
+
+SYMBOL TABLE:
+0000000000000000 g     F .text	000000000000003a sum
+0000000000000000 g     O .bss	0000000000000004 total
+0000000000000000         *UND*	0000000000000000 scale
+
+Disassembly of section .text:
+
+0000000000000000 <sum>:
+       0: 55                           	pushq	%rbp
+       1: 48 89 e5                     	movq	%rsp, %rbp
+       4: 53                           	pushq	%rbx
+       5: 48 83 ec 08                  	subq	$0x8, %rsp
+       9: 89 fb                        	movl	%edi, %ebx
+       b: 6b cb 06                     	imull	$0x6, %ebx, %ecx
+       e: 31 ff                        	xorl	%edi, %edi
+      10: 31 d2                        	xorl	%edx, %edx
+      12: 39 da                        	cmpl	%ebx, %edx
+      14: 7d 10                        	jge	0x26 <sum+0x26>
+      16: 8d 34 0f                     	leal	(%rdi,%rcx), %esi
+      19: 01 d6                        	addl	%edx, %esi
+      1b: 44 8d 42 01                  	leal	0x1(%rdx), %r8d
+      1f: 89 f7                        	movl	%esi, %edi
+      21: 44 89 c2                     	movl	%r8d, %edx
+      24: eb ec                        	jmp	0x12 <sum+0x12>
+      26: 89 3d 00 00 00 00            	movl	%edi, (%rip)            # 0x2c <sum+0x2c>
+		0000000000000028:  R_X86_64_PC32	total-0x4
+      2c: e8 00 00 00 00               	callq	0x31 <sum+0x31>
+		000000000000002d:  R_X86_64_PLT32	scale-0x4
+      31: 01 d8                        	addl	%ebx, %eax
+      33: 48 83 c4 08                  	addq	$0x8, %rsp
+      37: 5b                           	popq	%rbx
+      38: 5d                           	popq	%rbp
+      39: c3                           	retq

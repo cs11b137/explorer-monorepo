@@ -1,0 +1,150 @@
+import { concept, pipeBuffer, pipeFds, syscallRegs, userBytes, wire } from '../decode/structures';
+import { note, pk, render, show, state, type } from './dsl';
+import type { Lesson } from './types';
+
+export const pipe: Lesson = {
+  id: 'pipe',
+  name: 'PIPE',
+  title: '管道',
+  group: 'io',
+  layer: [4, 5],
+  timeUnit: 'µs',
+  nodes: ['app', 'proc2', 'kernel', 'k2', 'ram'],
+  place: { app: [130, 170], proc2: [860, 170], kernel: [500, 120], k2: [500, 420], ram: [860, 500] },
+  labels: {
+    app: ['写者 A', 'ls，stdout 接写端'],
+    proc2: ['读者 B', 'wc，stdin 接读端'],
+    kernel: ['内核', 'fs/pipe.c'],
+    k2: ['管道环', '16 个槽'],
+    ram: ['内存', '存数据的页'],
+  },
+  start: ['app', 'kernel', 'k2'],
+  legend: [['blue', '系统调用'], ['violet', '环形缓冲区'], ['amber', '阻塞'], ['green', '唤醒与数据']],
+  overview: {
+    full: '内核里的一段环形缓冲区',
+    description: 'ls | wc 里的那根竖线，是内核中的环形缓冲区加上两个等待队列。写者往里放，读者往外取。空了读者睡，满了写者睡，对方操作后再把它唤醒。这种阻塞唤醒是操作系统协调进程的基本模式。',
+    facts: [
+      ['平台', 'Linux 6.12'],
+      ['创建', 'pipe2（293）'],
+      ['默认容量', '16 个槽，每槽一页，共 64 KiB'],
+      ['槽里存的', '页描述符，不是字节'],
+      ['原子写入', '不超过 PIPE_BUF（4096 字节）'],
+      ['等待队列', 'rd_wait 和 wr_wait'],
+    ],
+  },
+  steps: [
+    {
+      title: '创建',
+      desc: 'pipe2 返回一对文件描述符',
+      detail: 'shell 在 fork 之前调用 pipe2，得到读端 3 和写端 4。内核创建 pipe_inode_info，含一个 16 项的 pipe_buffer 环和两个等待队列。fork 之后子进程继承这两个描述符，shell 再用 dup2 把它们接到标准输出和标准输入上，这就是管道能连接两个程序的原因。',
+      facts: [['调用号', '293 = pipe2'], ['读端', 'fd 3'], ['写端', 'fd 4'], ['继承', 'fork 复制 fd 表']],
+      events: [
+        type('ls | wc -l'),
+        pk('app', 'kernel', 'blue', 'pipe2', ['flags = 0'], [0, 'SYSCALL', 'pipe2(pipefd, 0)', 'reg'],
+          wire('shell 发起的调用', 'regs', 'abi', syscallRegs(293, 'pipe2', [
+            ['rdi', 0x7ffd3c21a3b8n, 'pipefd：结果写到这里。', { example: true }],
+            ['rsi', 0, 'flags。'],
+          ]))),
+        pk('kernel', 'app', 'green', '返回 fd', ['读 3，写 4'], [18000, 'SYSRET', 'pipefd = {3, 4}', 8],
+          wire('内核写回用户内存的数组', 'mem', 'abi', pipeFds(3, 4))),
+        state('k2', { head: '0', tail: '0', 占用: '0/16' }),
+      ],
+    },
+    {
+      title: '读空阻塞',
+      desc: '读者发现 head == tail，进入睡眠',
+      detail: 'wc 先运行，调用 read。内核持有管道的锁，比较 head 和 tail，它们是一直递增的计数，取模后才是槽的位置。两者相等说明管道是空的。于是 B 释放锁，把自己加入 rd_wait 等待队列后睡眠。调度器把 CPU 让给别人，B 不占用任何 CPU 时间。',
+      facts: [['判空', 'head == tail'], ['等待队列', 'rd_wait'], ['B 的状态', '可中断睡眠'], ['占用 CPU', '否']],
+      events: [
+        show('proc2'),
+        pk('proc2', 'kernel', 'blue', 'read', ['fd = 0'], [40000, 'SYSCALL', 'read(0, buf, 65536)', 'reg'],
+          wire('读者发起的调用', 'regs', 'abi', syscallRegs(0, 'read', [
+            ['rdi', 0, 'fd：标准输入，已被 dup2 接到管道读端。'],
+            ['rsi', 0x7ffe91c20000n, 'buf。', { example: true }],
+            ['rdx', 65536, 'count。'],
+          ]))),
+        pk('kernel', 'k2', 'amber', '检查环', ['head == tail'], [42000, 'MEM', '管道为空', null],
+          wire('pipe_inode_info 是内核内部结构，这里只列相关字段', 'regs', '示意', concept('环的状态', [
+            ['head', '0', '下一个写入的位置，一直递增。'],
+            ['tail', '0', '下一个读取的位置，一直递增。'],
+            ['ring_size', '16', '实际槽位 = 计数 & (ring_size - 1)。'],
+          ], 'amber'))),
+        state('proc2', { 状态: '睡眠，在 rd_wait' }),
+      ],
+    },
+    {
+      title: '写入',
+      desc: '占一个槽，head 前进',
+      detail: 'ls 写输出。内核分配一页，把数据从用户缓冲区拷进去，然后填好一个 pipe_buffer：指向这一页，记录偏移和长度。head 加一。槽里只有页描述符，数据在那一页里。写入不超过 4096 字节时保证原子，多个写者的数据不会交错；更大的写入可能被拆开。',
+      facts: [['写入大小', '1200 字节'], ['新 head', '1'], ['原子保证', '不超过 PIPE_BUF'], ['CAN_MERGE', '小写入可追加到同一页']],
+      events: [
+        pk('app', 'kernel', 'blue', 'write', ['1200 字节'], [90000, 'SYSCALL', 'write(1, buf, 1200)', 'reg'],
+          wire('ls 的标准输出已被 dup2 到管道写端', 'regs', 'abi', syscallRegs(1, 'write', [
+            ['rdi', 1, 'fd：标准输出，已被 dup2 接到管道写端。'],
+            ['rsi', 0x55d0c2a18000n, 'buf。', { example: true }],
+            ['rdx', 1200, 'count。'],
+          ]))),
+        show('ram'),
+        pk('kernel', 'ram', 'violet', '拷入新页', ['1200 字节'], [93000, 'MEM', '分配一页并 copy_from_user', 1200],
+          wire('文件名列表就是 ls 的输出', 'mem', 'abi', userBytes('数据页开头', 'kernel.c\nnotes.txt\nsched.c\n'))),
+        pk('kernel', 'k2', 'violet', '填槽', ['head → 1'], [95000, 'MEM', '填写 pipe_buffer，head 前进', 40],
+          wire('这个结构是内核内部的，布局按 Linux 6.12', 'mem', 'internal', pipeBuffer(0xffffea0001075c00n, 1200))),
+        state('k2', { head: '1', tail: '0', 占用: '1/16' }),
+      ],
+    },
+    {
+      title: '写后唤醒',
+      desc: '从空变非空，才唤醒读者',
+      detail: '写完后，内核发现写之前管道是空的（was_empty），于是唤醒 rd_wait 上的 B。注意只在从空变非空这个转换点才唤醒，不是每次写都唤醒，这省下了大量不必要的唤醒。B 被调度后拷出数据，tail 前进，释放这个槽和页。',
+      facts: [['唤醒条件', 'was_empty'], ['不是', '每次写都唤醒'], ['新 tail', '1'], ['页面', '读完后释放']],
+      events: [
+        pk('k2', 'proc2', 'green', '唤醒 B', ['was_empty'], [97000, 'SCHED', 'wake_up_interruptible_sync_poll(&pipe->rd_wait)', null],
+          wire('fs/pipe.c 的 pipe_write', 'regs', 'internal', concept('唤醒判断', [
+            ['was_empty', 'true', '写之前 head == tail。'],
+            ['动作', '唤醒 rd_wait', '如果原本非空，读者不可能在等，无须唤醒。'],
+          ], 'green'))),
+        state('proc2', { 状态: '运行中' }),
+        pk('kernel', 'proc2', 'green', 'read 返回', ['1200 字节'], [130000, 'SYSRET', 'copy_to_user，tail 前进', 1200],
+          wire('读者收到的数据', 'mem', 'abi', userBytes('用户缓冲区开头', 'kernel.c\nnotes.txt\nsched.c\n'))),
+        state('k2', { head: '1', tail: '1', 占用: '0/16' }),
+      ],
+    },
+    {
+      title: '写满阻塞',
+      desc: '写者进入 wr_wait，读后再唤醒',
+      detail: '如果读者比写者慢，16 个槽会被占满，写者就在 wr_wait 上睡眠。这就是背压：快的生产者被自动放慢，不会撑爆内存。读者读走数据、腾出槽位时，内核发现之前是满的（was_full），于是唤醒写者。这也只发生在转换点。yes | head 能瞬间结束，也是这套机制：读端关闭后写者收到 SIGPIPE。',
+      facts: [['判满', 'head - tail >= 16'], ['等待队列', 'wr_wait'], ['唤醒条件', 'was_full'], ['读端关闭', '写者收到 SIGPIPE']],
+      events: [
+        pk('app', 'kernel', 'blue', '继续写', ['第 17 页'], [900000, 'SYSCALL', 'write(1, buf, 65536)：环已满', 'reg'],
+          wire('写者继续写', 'regs', 'abi', syscallRegs(1, 'write', [
+            ['rdi', 1, 'fd。'],
+            ['rsi', 0x55d0c2a18000n, 'buf。', { example: true }],
+            ['rdx', 65536, 'count。'],
+          ]))),
+        state('k2', { head: '17', tail: '1', 占用: '16/16' }),
+        note('k2', '环满了', 'amber'),
+        state('app', { 状态: '睡眠，在 wr_wait' }),
+        pk('proc2', 'kernel', 'blue', 'read', ['取走数据'], [1100000, 'SYSCALL', 'read(0, buf, 65536)：腾出槽位', 'reg'],
+          wire('读者读取', 'regs', 'abi', syscallRegs(0, 'read', [
+            ['rdi', 0, 'fd：标准输入。'],
+            ['rsi', 0x7ffe91c20000n, 'buf。', { example: true }],
+            ['rdx', 65536, 'count。'],
+          ]))),
+        state('k2', { head: '17', tail: '17', 占用: '0/16' }),
+        pk('k2', 'app', 'green', '唤醒 A', ['was_full'], [1115000, 'SCHED', 'wake_up_interruptible_sync_poll(&pipe->wr_wait)', null],
+          wire('fs/pipe.c 的 pipe_read', 'regs', 'internal', concept('唤醒判断', [
+            ['was_full', 'true', '读之前环是满的。'],
+            ['动作', '唤醒 wr_wait', '写者可以继续了。'],
+          ], 'green'))),
+        state('app', { 状态: null }),
+        render,
+      ],
+    },
+  ],
+  outro: {
+    title: '睡眠和唤醒',
+    desc: '进程之间最基本的协调方式',
+    text: '管道把两个互不相识的程序连在一起，速度由慢的那个决定，也不必忙等。这里的模式到处都有：检查条件，不满足就加入等待队列去睡；对方改变条件，再唤醒你。互斥锁、socket 和条件变量都是同样的结构。',
+    facts: [['没有忙等', '等待时不占用 CPU'], ['背压', '自动放慢生产者'], ['全部学完', '回到上面选择任一课']],
+  },
+};

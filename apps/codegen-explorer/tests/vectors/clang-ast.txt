@@ -1,0 +1,81 @@
+TranslationUnitDecl <<invalid sloc>> <invalid sloc>
+|-TypedefDecl <<invalid sloc>> <invalid sloc> implicit __int128_t '__int128'
+| `-BuiltinType '__int128'
+|-TypedefDecl <<invalid sloc>> <invalid sloc> implicit __uint128_t 'unsigned __int128'
+| `-BuiltinType 'unsigned __int128'
+|-TypedefDecl <<invalid sloc>> <invalid sloc> implicit __NSConstantString 'struct __NSConstantString_tag'
+| `-RecordType 'struct __NSConstantString_tag'
+|   `-Record '__NSConstantString_tag'
+|-TypedefDecl <<invalid sloc>> <invalid sloc> implicit __builtin_ms_va_list 'char *'
+| `-PointerType 'char *'
+|   `-BuiltinType 'char'
+|-TypedefDecl <<invalid sloc>> <invalid sloc> implicit __builtin_va_list 'struct __va_list_tag[1]'
+| `-ConstantArrayType 'struct __va_list_tag[1]' 1 
+|   `-RecordType 'struct __va_list_tag'
+|     `-Record '__va_list_tag'
+|-VarDecl <sum.c:1:1, col:5> col:5 used total 'int'
+|-FunctionDecl <line:2:1, col:16> col:5 used scale 'int (int)'
+| `-ParmVarDecl <col:11, col:15> col:15 v 'int'
+`-FunctionDecl <line:4:1, line:16:1> line:4:5 sum 'int (int)'
+  |-ParmVarDecl <col:9, col:13> col:13 used n 'int'
+  `-CompoundStmt <col:16, line:16:1>
+    |-DeclStmt <line:5:3, col:12>
+    | `-VarDecl <col:3, col:11> col:7 used k 'int' cinit
+    |   `-IntegerLiteral <col:11> 'int' 2
+    |-DeclStmt <line:6:3, col:16>
+    | `-VarDecl <col:3, col:15> col:7 used m 'int' cinit
+    |   `-BinaryOperator <col:11, col:15> 'int' '*'
+    |     |-ImplicitCastExpr <col:11> 'int' <LValueToRValue>
+    |     | `-DeclRefExpr <col:11> 'int' lvalue Var 'k' 'int'
+    |     `-IntegerLiteral <col:15> 'int' 3
+    |-DeclStmt <line:7:3, col:16>
+    | `-VarDecl <col:3, col:15> col:7 d 'int' cinit
+    |   `-BinaryOperator <col:11, col:15> 'int' '+'
+    |     |-ImplicitCastExpr <col:11> 'int' <LValueToRValue>
+    |     | `-DeclRefExpr <col:11> 'int' lvalue Var 'm' 'int'
+    |     `-IntegerLiteral <col:15> 'int' 1
+    |-DeclStmt <line:8:3, col:12>
+    | `-VarDecl <col:3, col:11> col:7 used s 'int' cinit
+    |   `-IntegerLiteral <col:11> 'int' 0
+    |-DeclStmt <line:9:3, col:12>
+    | `-VarDecl <col:3, col:11> col:7 used i 'int' cinit
+    |   `-IntegerLiteral <col:11> 'int' 0
+    |-WhileStmt <line:10:3, line:13:3>
+    | |-BinaryOperator <line:10:10, col:14> 'int' '<'
+    | | |-ImplicitCastExpr <col:10> 'int' <LValueToRValue>
+    | | | `-DeclRefExpr <col:10> 'int' lvalue Var 'i' 'int'
+    | | `-ImplicitCastExpr <col:14> 'int' <LValueToRValue>
+    | |   `-DeclRefExpr <col:14> 'int' lvalue ParmVar 'n' 'int'
+    | `-CompoundStmt <col:17, line:13:3>
+    |   |-BinaryOperator <line:11:5, col:21> 'int' '='
+    |   | |-DeclRefExpr <col:5> 'int' lvalue Var 's' 'int'
+    |   | `-BinaryOperator <col:9, col:21> 'int' '+'
+    |   |   |-BinaryOperator <col:9, col:17> 'int' '+'
+    |   |   | |-ImplicitCastExpr <col:9> 'int' <LValueToRValue>
+    |   |   | | `-DeclRefExpr <col:9> 'int' lvalue Var 's' 'int'
+    |   |   | `-BinaryOperator <col:13, col:17> 'int' '*'
+    |   |   |   |-ImplicitCastExpr <col:13> 'int' <LValueToRValue>
+    |   |   |   | `-DeclRefExpr <col:13> 'int' lvalue Var 'm' 'int'
+    |   |   |   `-ImplicitCastExpr <col:17> 'int' <LValueToRValue>
+    |   |   |     `-DeclRefExpr <col:17> 'int' lvalue ParmVar 'n' 'int'
+    |   |   `-ImplicitCastExpr <col:21> 'int' <LValueToRValue>
+    |   |     `-DeclRefExpr <col:21> 'int' lvalue Var 'i' 'int'
+    |   `-BinaryOperator <line:12:5, col:13> 'int' '='
+    |     |-DeclRefExpr <col:5> 'int' lvalue Var 'i' 'int'
+    |     `-BinaryOperator <col:9, col:13> 'int' '+'
+    |       |-ImplicitCastExpr <col:9> 'int' <LValueToRValue>
+    |       | `-DeclRefExpr <col:9> 'int' lvalue Var 'i' 'int'
+    |       `-IntegerLiteral <col:13> 'int' 1
+    |-BinaryOperator <line:14:3, col:11> 'int' '='
+    | |-DeclRefExpr <col:3> 'int' lvalue Var 'total' 'int'
+    | `-ImplicitCastExpr <col:11> 'int' <LValueToRValue>
+    |   `-DeclRefExpr <col:11> 'int' lvalue Var 's' 'int'
+    `-ReturnStmt <line:15:3, col:21>
+      `-BinaryOperator <col:10, col:21> 'int' '+'
+        |-CallExpr <col:10, col:17> 'int'
+        | |-ImplicitCastExpr <col:10> 'int (*)(int)' <FunctionToPointerDecay>
+        | | `-DeclRefExpr <col:10> 'int (int)' Function 'scale' 'int (int)'
+        | `-ImplicitCastExpr <col:16> 'int' <LValueToRValue>
+        |   `-DeclRefExpr <col:16> 'int' lvalue Var 's' 'int'
+        `-ImplicitCastExpr <col:21> 'int' <LValueToRValue>
+          `-DeclRefExpr <col:21> 'int' lvalue ParmVar 'n' 'int'

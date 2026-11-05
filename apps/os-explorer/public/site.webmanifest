@@ -1,0 +1,10 @@
+{
+  "name": "OS Explorer · 看懂操作系统如何工作",
+  "short_name": "OS Explorer",
+  "lang": "zh-CN",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fdfdfe",
+  "theme_color": "#003ca8",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

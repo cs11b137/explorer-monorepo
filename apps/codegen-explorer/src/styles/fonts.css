@@ -1,0 +1,7 @@
+/* Iosevka（SIL OFL 1.1，许可证见 src/assets/fonts/LICENSE.txt），裁剪为本站用到的字符。中文走系统字体。 */
+@font-face { font-family: Iosevka; font-style: normal; font-weight: 400; font-display: swap; src: url(../assets/fonts/iosevka-400-normal.woff2) format('woff2'); }
+@font-face { font-family: Iosevka; font-style: normal; font-weight: 500; font-display: swap; src: url(../assets/fonts/iosevka-500-normal.woff2) format('woff2'); }
+@font-face { font-family: Iosevka; font-style: normal; font-weight: 600; font-display: swap; src: url(../assets/fonts/iosevka-600-normal.woff2) format('woff2'); }
+@font-face { font-family: Iosevka; font-style: normal; font-weight: 700; font-display: swap; src: url(../assets/fonts/iosevka-700-normal.woff2) format('woff2'); }
+@font-face { font-family: Iosevka; font-style: normal; font-weight: 800; font-display: swap; src: url(../assets/fonts/iosevka-800-normal.woff2) format('woff2'); }
+@font-face { font-family: Iosevka; font-style: italic; font-weight: 800; font-display: swap; src: url(../assets/fonts/iosevka-800-italic.woff2) format('woff2'); }

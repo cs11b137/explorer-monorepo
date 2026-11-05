@@ -1,0 +1,7 @@
+bad.c:15:19: error: too many arguments to function call, expected single argument 'v', have 2 arguments
+   15 |   return scale(s, n) + n;
+      |          ~~~~~    ^
+bad.c:2:5: note: 'scale' declared here
+    2 | int scale(int v);
+      |     ^     ~~~~~
+1 error generated.

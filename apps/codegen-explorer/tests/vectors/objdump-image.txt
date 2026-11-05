@@ -1,0 +1,56 @@
+
+image:	file format elf64-x86-64
+
+Sections:
+Idx Name          Size     VMA              Type
+  0               00000000 0000000000000000 
+  1 .text         00000049 0000000000401000 TEXT
+  2 .bss          00000004 0000000000402000 BSS
+  3 .symtab       00000060 0000000000000000 
+  4 .strtab       00000011 0000000000000000 
+  5 .shstrtab     00000026 0000000000000000 
+
+SYMBOL TABLE:
+0000000000401000 g     F .text	000000000000003a sum
+0000000000402000 g     O .bss	0000000000000004 total
+0000000000401040 g     F .text	0000000000000009 scale
+
+Disassembly of section .text:
+
+0000000000401000 <sum>:
+  401000: 55                           	pushq	%rbp
+  401001: 48 89 e5                     	movq	%rsp, %rbp
+  401004: 53                           	pushq	%rbx
+  401005: 48 83 ec 08                  	subq	$0x8, %rsp
+  401009: 89 fb                        	movl	%edi, %ebx
+  40100b: 6b cb 06                     	imull	$0x6, %ebx, %ecx
+  40100e: 31 ff                        	xorl	%edi, %edi
+  401010: 31 d2                        	xorl	%edx, %edx
+  401012: 39 da                        	cmpl	%ebx, %edx
+  401014: 7d 10                        	jge	0x401026 <sum+0x26>
+  401016: 8d 34 0f                     	leal	(%rdi,%rcx), %esi
+  401019: 01 d6                        	addl	%edx, %esi
+  40101b: 44 8d 42 01                  	leal	0x1(%rdx), %r8d
+  40101f: 89 f7                        	movl	%esi, %edi
+  401021: 44 89 c2                     	movl	%r8d, %edx
+  401024: eb ec                        	jmp	0x401012 <sum+0x12>
+  401026: 89 3d d4 0f 00 00            	movl	%edi, 0xfd4(%rip)       # 0x402000 <total>
+  40102c: e8 0f 00 00 00               	callq	0x401040 <scale>
+  401031: 01 d8                        	addl	%ebx, %eax
+  401033: 48 83 c4 08                  	addq	$0x8, %rsp
+  401037: 5b                           	popq	%rbx
+  401038: 5d                           	popq	%rbp
+  401039: c3                           	retq
+  40103a: 90                           	nop
+  40103b: 90                           	nop
+  40103c: 90                           	nop
+  40103d: 90                           	nop
+  40103e: 90                           	nop
+  40103f: 90                           	nop
+
+0000000000401040 <scale>:
+  401040: 55                           	pushq	%rbp
+  401041: 48 89 e5                     	movq	%rsp, %rbp
+  401044: 6b c7 02                     	imull	$0x2, %edi, %eax
+  401047: 5d                           	popq	%rbp
+  401048: c3                           	retq

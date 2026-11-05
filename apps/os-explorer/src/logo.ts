@@ -1,0 +1,1 @@
+export const LOGO = '<svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"><path d="M32 6 58 19.5 32 33 6 19.5Z" fill="currentColor"/><path d="M6 31.5 32 45 58 31.5"/><path d="M6 44 32 57.5 58 44"/></g></svg>';
