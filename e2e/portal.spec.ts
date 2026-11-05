@@ -65,6 +65,21 @@ test('不存在的地址返回 404，不会落回首页', async ({ request }) =>
   expect((await request.get('modules/nope/')).status()).toBe(404);
 });
 
+test('404 页面能加载样式，并能回到首页', async ({ page }) => {
+  const problems: string[] = [];
+  page.on('pageerror', (error) => problems.push(error.message));
+  page.on('response', (response) => {
+    if (response.status() >= 400) problems.push(`${response.status()} ${response.url()}`);
+  });
+  await page.goto('404.html');
+  await expect(page.locator('h1')).toHaveText('404');
+  await expect(page.locator('body')).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  expect(problems).toEqual([]);
+  await page.click('.portal-head a');
+  await expect(page).toHaveURL('./');
+  await expect(page.locator('.course')).toHaveCount(6);
+});
+
 test('部署的 Protocol 镜像只改动了路径，二进制文件逐字节不变', async ({ request, baseURL }) => {
   const base = new URL(baseURL!).pathname;
   const manifest = JSON.parse(readFileSync('modules/protocol/MANIFEST.json', 'utf8')) as { files: Array<{ path: string; sha256: string }> };

@@ -2,7 +2,7 @@
 
 交互式教学主站：逐事件动画 + 逐字节解码。首页是课程入口，六门课程是主站下的模块，全部由一个服务提供。
 
-线上地址：<https://wuwenjunpr.site/explorer-monorepo/>
+线上地址：<https://wuwenjunpr.site/explorer-monorepo/>，<https://explorer-monorepo.pages.dev/>
 
 | 目录 | 模块 | 内容 | 地址 |
 |---|---|---|---|
@@ -40,7 +40,15 @@ npm run mirror:protocol  # 从线上重新镜像 Protocol Explorer
 
 ## 部署
 
-推送到 `main` 后，`.github/workflows/deploy.yml` 会用 `BASE_PATH=/<仓库名>/` 构建，并发布到 GitHub Pages。域名 `wuwenjunpr.site` 配在 `cs11b137.github.io` 仓库上，本仓库作为项目站自动挂在它的子路径下，所以不需要 CNAME 文件。改仓库名会改变线上地址。
+推送到 `main` 后，两个工作流会各自构建并发布：
+
+| 工作流 | 目标 | 基路径 |
+|---|---|---|
+| `.github/workflows/deploy.yml` | GitHub Pages，<https://wuwenjunpr.site/explorer-monorepo/> | `/<仓库名>/` |
+| `.github/workflows/deploy-cloudflare.yml` | Cloudflare Pages，<https://explorer-monorepo.pages.dev/> | `/` |
+
+- 域名 `wuwenjunpr.site` 配在 `cs11b137.github.io` 仓库上，本仓库作为项目站自动挂在它的子路径下，所以不需要 CNAME 文件。改仓库名会改变这个地址。
+- Cloudflare 部署需要仓库的两个 Secrets：`CLOUDFLARE_API_TOKEN`（权限 Cloudflare Pages: Edit、Account Settings: Read）和 `CLOUDFLARE_ACCOUNT_ID`。Pages 项目名写在工作流里。
 
 ## 引擎和站点怎么分工
 

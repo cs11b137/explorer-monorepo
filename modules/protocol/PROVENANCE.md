@@ -6,7 +6,7 @@
 |---|---|
 | 来源 | https://protocol-explorer-alpha.vercel.app/ |
 | 镜像工具 | `scripts/mirror.mjs`，文件清单、大小、SHA-256、ETag 和时间都在 `MANIFEST.json` |
-| 授权 | 项目所有者于 2026-11-05 说明，作者已同意镜像，并同意在本公开仓库和 wuwenjunpr.site 上发布。同意的原文未存入本仓库，建议把它放在这里 |
+| 授权 | 项目所有者于 2026-11-05 说明，作者已同意镜像，并同意在本公开仓库和 wuwenjunpr.site 上发布。Cloudflare Pages（explorer-monorepo.pages.dev）上的发布由项目所有者于同日决定。同意的原文未存入本仓库，建议把它放在这里 |
 | 许可证 | 来源站没有公开的许可证文件，这里也没有替作者添加任何许可证 |
 
 ## 这是什么，不是什么

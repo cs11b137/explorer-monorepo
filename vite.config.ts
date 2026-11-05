@@ -39,7 +39,8 @@ export default defineConfig({
     target: 'es2022',
     // 基路径下的 assets/ 留给 Protocol 镜像。
     assetsDir: 'static',
-    rollupOptions: { input: ['index.html', ...pages].map((page) => resolve(ROOT, page)) },
+    // 404.html 放在输出根目录。Cloudflare Pages 没有它时，会把不存在的地址都返回首页。
+    rollupOptions: { input: ['index.html', '404.html', ...pages].map((page) => resolve(ROOT, page)) },
   },
   plugins: [moduleTrailingSlash(), protocolMirror(ROOT)],
 });

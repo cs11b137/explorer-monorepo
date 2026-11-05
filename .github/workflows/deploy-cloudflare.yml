@@ -1,0 +1,39 @@
+name: Deploy to Cloudflare Pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: "cloudflare-pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Cloudflare Pages 上站点在根路径，不设 BASE_PATH，Protocol 镜像逐字节原样提供。
+      - name: Build
+        run: npm run build
+
+      - name: Deploy
+        run: npx --yes wrangler@4 pages deploy dist --project-name=explorer-monorepo --branch=main
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
