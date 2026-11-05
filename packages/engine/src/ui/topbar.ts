@@ -12,7 +12,7 @@ export function topbarMarkup(): string {
   return `
   <header class="topbar">
     <button class="drawer-btn" type="button" aria-label="课程列表" aria-expanded="false" aria-controls="lessons">${ICONS.menu}<span>课程</span></button>
-    <div class="brand">
+    <a class="brand" href="/" title="返回课程首页">
       <div class="logo-frame">
         <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
         ${brand.logo}
@@ -21,7 +21,7 @@ export function topbarMarkup(): string {
         <h1>${brand.title}</h1>
         <p>${brand.tagline}</p>
       </div>
-    </div>
+    </a>
     <span class="topbar-sep"></span>
     <div class="now">
       <div class="now-label">正在学习</div>

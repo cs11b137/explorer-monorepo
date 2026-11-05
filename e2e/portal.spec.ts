@@ -1,0 +1,76 @@
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { expect, test } from '@playwright/test';
+
+const MODULES = ['protocol', 'os', 'algo', 'codegen', 'cpu', 'db'];
+const PAGE_FILES = new Set(['/index.html', '/robots.txt', '/sitemap.xml']);
+
+test('首页没有资源错误，也不横向溢出', async ({ page }) => {
+  const problems: string[] = [];
+  page.on('pageerror', (error) => problems.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') problems.push(message.text());
+  });
+  page.on('response', (response) => {
+    if (response.status() >= 400) problems.push(`${response.status()} ${response.url()}`);
+  });
+  await page.goto('/');
+  await expect(page.locator('.course')).toHaveCount(MODULES.length);
+  await expect.poll(() => page.locator('.course img').evaluateAll((images) => images.every((image) => (image as HTMLImageElement).naturalWidth > 0))).toBe(true);
+  await page.setViewportSize({ width: 390, height: 800 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  expect(problems).toEqual([]);
+});
+
+for (const name of MODULES) {
+  test(`从首页进入 ${name} 模块`, async ({ page }) => {
+    const problems: string[] = [];
+    page.on('pageerror', (error) => problems.push(error.message));
+    page.on('response', (response) => {
+      if (response.status() >= 400) problems.push(`${response.status()} ${response.url()}`);
+    });
+    await page.goto('/');
+    await page.click(`.course[data-module="${name}"]`);
+    await expect(page).toHaveURL(`/modules/${name}/`);
+    await expect(page.locator('.proto')).toHaveCount(14);
+    expect(problems).toEqual([]);
+  });
+}
+
+for (const name of MODULES.filter((module) => module !== 'protocol')) {
+  test(`${name} 模块的品牌区回到首页`, async ({ page }) => {
+    await page.goto(`/modules/${name}/`);
+    await page.click('a.brand');
+    await expect(page).toHaveURL('/');
+    await expect(page.locator('.course')).toHaveCount(MODULES.length);
+  });
+
+  test(`${name} 模块的 manifest 和图标都能加载`, async ({ request }) => {
+    const manifest = await (await request.get(`/modules/${name}/site.webmanifest`)).json();
+    expect(manifest.start_url).toBe(`/modules/${name}/`);
+    expect((await request.get(manifest.icons[0].src)).status()).toBe(200);
+  });
+}
+
+test('不带斜杠的模块地址也能进入', async ({ page }) => {
+  await page.goto('/modules/os?x=1');
+  await expect(page).toHaveURL('/modules/os/?x=1');
+  await expect(page.locator('.proto')).toHaveCount(14);
+  await page.goto('/modules/protocol');
+  await expect(page).toHaveURL('/modules/protocol/');
+  await expect(page.locator('.proto')).toHaveCount(14);
+});
+
+test('不存在的地址返回 404，不会落回首页', async ({ request }) => {
+  expect((await request.get('/modules/nope/')).status()).toBe(404);
+});
+
+test('服务提供的 Protocol 镜像和 MANIFEST.json 逐字节一致', async ({ request }) => {
+  const manifest = JSON.parse(readFileSync('modules/protocol/MANIFEST.json', 'utf8')) as { files: Array<{ path: string; sha256: string }> };
+  for (const file of manifest.files) {
+    const url = PAGE_FILES.has(file.path) ? `/modules/protocol${file.path}` : file.path;
+    const response = await request.get(url);
+    expect(response.status(), url).toBe(200);
+    expect(createHash('sha256').update(await response.body()).digest('hex'), url).toBe(file.sha256);
+  }
+});

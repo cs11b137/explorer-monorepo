@@ -4,21 +4,19 @@
   "type": "module",
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "modules/*"
   ],
   "scripts": {
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev": "vite",
+    "build": "npm run typecheck && npm run test -w protocol-explorer && vite build",
+    "start": "vite preview",
+    "typecheck": "tsc --noEmit && npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
-    "test:e2e": "npm run test:e2e --workspaces --if-present",
-    "build": "npm run build --workspaces --if-present",
-    "dev:protocol": "npm run dev -w protocol-explorer",
-    "dev:os": "npm run dev -w os-explorer",
-    "dev:algo": "npm run dev -w algo-explorer",
-    "dev:codegen": "npm run dev -w codegen-explorer",
-    "dev:cpu": "npm run dev -w cpu-explorer",
-    "dev:db": "npm run dev -w db-explorer",
-    "mirror:protocol": "npm run mirror -w protocol-explorer",
-    "dev:all": "node scripts/dev-all.mjs"
+    "test:e2e": "playwright test",
+    "mirror:protocol": "npm run mirror -w protocol-explorer"
+  },
+  "dependencies": {
+    "@explorer/engine": "*"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",

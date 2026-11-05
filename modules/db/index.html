@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>DB Explorer · 看懂一条 SQL 如何被执行和保存</title>
+    <meta name="description" content="看一条 SQL 一步步被执行和保存：用交互动画讲解解析、代价估算、索引、哈希连接、页面布局、缓冲区、B+ 树、MVCC、锁、WAL 和崩溃恢复，以 PostgreSQL 17 为准，逐字节解码真实结构。" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#fdfdfe" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b1020" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" href="/modules/db/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/modules/db/site.webmanifest" />
+    <script src="/modules/db/theme-init.js"></script>
+    <script type="module" src="./src/main.ts"></script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <noscript>
+      <p style="margin: 40px; font: 16px/1.5 ui-monospace, monospace; color: #00238a">
+        DB Explorer 用动画展示一条 SQL 的执行和保存过程，需要启用 JavaScript 才能开始学习。
+      </p>
+    </noscript>
+  </body>
+</html>

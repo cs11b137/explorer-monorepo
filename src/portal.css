@@ -1,0 +1,27 @@
+@import '@explorer/engine/styles/tokens.css';
+
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', monospace;
+}
+
+.portal { max-width: 1120px; margin-inline: auto; padding: clamp(32px, 7vh, 72px) 20px 48px; }
+.portal-head h1 { margin: 0; font-size: clamp(30px, 5vw, 44px); font-style: italic; font-weight: 800; letter-spacing: 0.085em; }
+.portal-head p { margin: 10px 0 0; font-size: 15px; line-height: 1.6; color: var(--ink-5); }
+
+.courses { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 16px; margin-top: 36px; }
+.course { display: block; padding: 20px; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; color: inherit; text-decoration: none; transition: background-color 0.15s, border-color 0.15s; }
+.course:hover { background: var(--fill-hover); border-color: var(--active); }
+.course:focus-visible { outline: 2px solid var(--active); outline-offset: 2px; }
+.course img { display: block; }
+.course h2 { margin: 14px 0 0; font-size: 18px; font-weight: 800; letter-spacing: 0.06em; }
+.course h2 em { font-style: italic; }
+.course strong { display: block; margin-top: 6px; font-size: 14px; font-weight: 600; color: var(--ink-label); }
+.course p { margin: 8px 0 0; font-size: 13px; line-height: 1.6; color: var(--ink-5); }
+
+@media (prefers-reduced-motion: reduce) {
+  .course { transition: none; }
+}

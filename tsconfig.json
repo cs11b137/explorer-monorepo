@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.base.json",
+  "include": [
+    "e2e",
+    "scripts",
+    "vite.config.ts",
+    "playwright.config.ts"
+  ]
+}

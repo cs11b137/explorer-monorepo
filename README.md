@@ -1,29 +1,39 @@
-# Explorer Monorepo
+# Explorer
 
-六个交互式教学站：逐事件动画 + 逐字节解码。
+交互式教学主站：逐事件动画 + 逐字节解码。首页是课程入口，六门课程是主站下的模块，全部由一个服务提供。
 
-| 目录 | 站点 | 内容 | `npm run dev:all` 端口 |
+| 目录 | 模块 | 内容 | 地址 |
 |---|---|---|---|
-| `apps/protocol-explorer` | Protocol Explorer | 网络协议。作者 Dilum Sanjaya 线上站的镜像，见其 `PROVENANCE.md` | 5300 |
-| `apps/os-explorer` | OS EXPLORER | 操作系统 | 5301 |
-| `apps/algo-explorer` | ALGO EXPLORER | 数据结构与算法 | 5302 |
-| `apps/codegen-explorer` | CODEGEN EXPLORER | 编译原理 | 5303 |
-| `apps/cpu-explorer` | CPU EXPLORER | 计算机组成原理 | 5304 |
-| `apps/db-explorer` | DB EXPLORER | 数据库系统原理 | 5305 |
-| `packages/engine` | `@explorer/engine` | 后五个站共用的引擎 | |
+| `index.html`、`src/`、`public/` | 主站首页 | 课程入口 | `/` |
+| `modules/protocol` | Protocol Explorer | 网络协议。作者 Dilum Sanjaya 线上站的镜像，见其 `PROVENANCE.md` | `/modules/protocol/` |
+| `modules/os` | OS EXPLORER | 操作系统 | `/modules/os/` |
+| `modules/algo` | ALGO EXPLORER | 数据结构与算法 | `/modules/algo/` |
+| `modules/codegen` | CODEGEN EXPLORER | 编译原理 | `/modules/codegen/` |
+| `modules/cpu` | CPU EXPLORER | 计算机组成原理 | `/modules/cpu/` |
+| `modules/db` | DB EXPLORER | 数据库系统原理 | `/modules/db/` |
+| `packages/engine` | `@explorer/engine` | 后五个模块共用的引擎 | |
 
 ## 常用命令
 
 ```bash
 npm install
-npm run dev:all          # 同时启动全部站点
-npm run dev:cpu          # 只启动一个
+npm run dev              # 启动主站，http://localhost:5300/
+npm run build            # 类型检查、校验镜像，构建到 dist/
+npm start                # 用一个服务提供 dist/，端口同样是 5300
 npm run typecheck
 npm test                 # 全部单元测试，并校验 Protocol Explorer 镜像
 npm run test:e2e         # 全部端到端测试，只测 Chromium
-npm run build
+npm run test:e2e -- --project=cpu   # 只测一个模块，主站首页的项目名是 portal
 npm run mirror:protocol  # 从线上重新镜像 Protocol Explorer
 ```
+
+## 主站和模块怎么组合
+
+每个模块是一个独立页面（多页面应用），课程之间跳转会整页加载，引擎的全局状态不会互相影响。`vite.config.ts` 自动把 `modules/*/index.html` 加入构建，模块地址就是它的目录路径。
+
+- 所有模块同源，`localStorage` 靠各自的存储前缀隔开，前缀不能重复。
+- 模块的静态文件（图标、manifest、`theme-init.js`）在 `public/modules/<name>/`。
+- 站点根路径的 `/assets/`、`/favicon.svg` 等归 Protocol 镜像所有，主站的构建产物放在 `/static/`。详见 `modules/protocol/PROVENANCE.md`。
 
 ## 引擎和站点怎么分工
 
@@ -36,7 +46,7 @@ npm run mirror:protocol  # 从线上重新镜像 Protocol Explorer
 - `decode/writer.ts`：按字节写结构、字段联动
 - `styles/`：颜色令牌和全部基础样式
 
-每个站（`apps/*/src`）只放自己的内容：
+每个模块（`modules/*/src`）只放自己的内容：
 
 - `site.ts`：站点配置，契约见引擎的 `site.ts`
 - `lessons/`：课程和事件类型
@@ -52,9 +62,10 @@ npm run mirror:protocol  # 从线上重新镜像 Protocol Explorer
 
 样式层叠也要留意：`site.css` 在引擎样式之后加载，所以它和引擎里同优先级的规则冲突时会胜出，包括响应式规则。站点要改只在宽屏生效的规则时，选择器要写窄，比如 `.is-stacked:not(.is-single) .workspace`。
 
-## 新增一个站
+## 新增一个模块
 
-1. 复制一个结构最接近的站到 `apps/<name>-explorer`，改 `package.json` 的名字和端口。
-2. 改 `src/site.ts`，把存储前缀、品牌、标签页、7 档色块换掉；`public/theme-init.js` 里的存储键要和前缀一致。
+1. 复制一个结构最接近的模块到 `modules/<name>`，改 `package.json` 的名字；复制 `public/modules/<name>/`，改里面的路径；`index.html` 里的资源路径也要改。
+2. 改 `src/site.ts`，把存储前缀、品牌、标签页、7 档色块换掉；`theme-init.js` 里的存储键要和前缀一致。
 3. 写 `lessons/`、`scene/devices.ts`。引擎的事件不够用时，在 `scene/plugin.ts` 里加。
 4. 按新站的字符重新裁剪字体。
+5. 在根目录 `index.html` 加课程卡片，在 `playwright.config.ts` 和 `e2e/portal.spec.ts` 的模块列表里加上它。

@@ -1,0 +1,9 @@
+{
+  "name": "protocol-explorer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node scripts/verify.mjs",
+    "mirror": "node scripts/mirror.mjs"
+  }
+}
