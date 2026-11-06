@@ -4,6 +4,8 @@ import { expect, test } from '@playwright/test';
 import { mirrorUrl, rewriteMirror } from '../scripts/protocol-mirror';
 
 const MODULES = ['protocol', 'os', 'algo', 'codegen', 'cpu', 'db'];
+/** 各模块的课数。 */
+const LESSON_COUNT: Record<string, number> = { protocol: 14, os: 18, algo: 20, codegen: 16, cpu: 16, db: 15 };
 
 test('首页没有资源错误，也不横向溢出', async ({ page }) => {
   const problems: string[] = [];
@@ -32,7 +34,7 @@ for (const name of MODULES) {
     await page.goto('./');
     await page.click(`.course[data-module="${name}"]`);
     await expect(page).toHaveURL(`modules/${name}/`);
-    await expect(page.locator('.proto')).toHaveCount(14);
+    await expect(page.locator('.proto')).toHaveCount(LESSON_COUNT[name]);
     expect(problems).toEqual([]);
   });
 }
@@ -55,10 +57,10 @@ for (const name of MODULES.filter((module) => module !== 'protocol')) {
 test('不带斜杠的模块地址也能进入', async ({ page }) => {
   await page.goto('modules/os?x=1');
   await expect(page).toHaveURL('modules/os/?x=1');
-  await expect(page.locator('.proto')).toHaveCount(14);
+  await expect(page.locator('.proto')).toHaveCount(LESSON_COUNT.os);
   await page.goto('modules/protocol');
   await expect(page).toHaveURL('modules/protocol/');
-  await expect(page.locator('.proto')).toHaveCount(14);
+  await expect(page.locator('.proto')).toHaveCount(LESSON_COUNT.protocol);
 });
 
 test('不存在的地址返回 404，不会落回首页', async ({ request }) => {

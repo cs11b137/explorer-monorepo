@@ -4,16 +4,16 @@
 
 线上地址：<https://wuwenjunpr.site/explorer-monorepo/>，<https://cs-explorer.pages.dev/>
 
-| 目录 | 模块 | 内容 | 地址 |
-|---|---|---|---|
-| `index.html`、`src/`、`public/` | 主站首页 | 课程入口 | `/` |
-| `modules/protocol` | Protocol Explorer | 网络协议。作者 Dilum Sanjaya 线上站的镜像，见其 `PROVENANCE.md` | `/modules/protocol/` |
-| `modules/os` | OS EXPLORER | 操作系统 | `/modules/os/` |
-| `modules/algo` | ALGO EXPLORER | 数据结构与算法 | `/modules/algo/` |
-| `modules/codegen` | CODEGEN EXPLORER | 编译原理 | `/modules/codegen/` |
-| `modules/cpu` | CPU EXPLORER | 计算机组成原理 | `/modules/cpu/` |
-| `modules/db` | DB EXPLORER | 数据库系统原理 | `/modules/db/` |
-| `packages/engine` | `@explorer/engine` | 后五个模块共用的引擎 | |
+| 目录 | 模块 | 内容 | 课数 | 地址 |
+|---|---|---|---|---|
+| `index.html`、`src/`、`public/` | 主站首页 | 课程入口 | | `/` |
+| `modules/protocol` | Protocol Explorer | 网络协议。作者 Dilum Sanjaya 线上站的镜像，见其 `PROVENANCE.md` | 14 | `/modules/protocol/` |
+| `modules/os` | OS EXPLORER | 操作系统 | 18 | `/modules/os/` |
+| `modules/algo` | ALGO EXPLORER | 数据结构与算法 | 20 | `/modules/algo/` |
+| `modules/codegen` | CODEGEN EXPLORER | 编译原理 | 16 | `/modules/codegen/` |
+| `modules/cpu` | CPU EXPLORER | 计算机组成原理 | 16 | `/modules/cpu/` |
+| `modules/db` | DB EXPLORER | 数据库系统原理 | 15 | `/modules/db/` |
+| `packages/engine` | `@explorer/engine` | 后五个模块共用的引擎 | | |
 
 ## 常用命令
 
