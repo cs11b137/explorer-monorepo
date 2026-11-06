@@ -1,0 +1,2 @@
+/** 一面盾牌（防护），盾面上一条心电图似的折线（监控），右上角一个对勾（评估通过）。 */
+export const LOGO = '<svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true"><path d="M30 6 50 13v17c0 13-8.6 22.6-20 27C18.6 52.6 10 43 10 30V13Z" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linejoin="round"/><path d="M15 33h8l4-9 6 17 4-8h8" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M47 9.5l4 4 8-8.5" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/></svg>';

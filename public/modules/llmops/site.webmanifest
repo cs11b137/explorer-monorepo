@@ -1,0 +1,10 @@
+{
+  "name": "LLMOps Explorer · 看懂 AI 功能如何上线并保持可靠",
+  "short_name": "LLMOps Explorer",
+  "lang": "zh-CN",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#fdfdfe",
+  "theme_color": "#003ca8",
+  "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

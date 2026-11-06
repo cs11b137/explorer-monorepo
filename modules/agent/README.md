@@ -386,6 +386,8 @@ multi 组没有核对、按本站写法对待的：approval 课的三条规则�
 - `pricing.ts`：示例单价和 `costOf`；
 - `ids.ts`：示例 id 和 `httpDate`。
 
+后来 LLMOPS EXPLORER 又把本模块的 `schema.ts`（JSON Schema 子集校验）和 `shop.ts`（小铺的场景数据）原样搬进共享包，四个工具给模型看的定义（name、title、description、input_schema、hints）也搬进共享包 `shop.ts` 的 `SHOP_TOOL_DEFS`；这里的 `schema.ts`、`shop.ts` 改成一行转导出，`tools.ts` 里每个工具用 `...SHOP_TOOL_DEFS.<名字>` 加上自己的 `run`，字段顺序不变，课程的字节和数字不变（单元测试和 e2e 都通过）。
+
 共享包的 `http.ts` 的原因短语表 `REASONS` 补了 202 Accepted、405 Method Not Allowed（http 课的 GET 和通知要用，RFC 9110 的短语；以前这两个状态码的起始行没有短语）。
 
 `scene/ds.ts`、`scene/plugin.ts` 和 llm、context、rag 的同名文件逐字相同，`decode/structures.ts` 里的 `httpHead`、`jsonBody`、`sseBody`、`utf8Lines`、`promptPieces`、`concept` 和 CONTEXT EXPLORER 的写法相同：这是系列的约定（每个模块的场景和写字节层各一份），没有抽成共享包。

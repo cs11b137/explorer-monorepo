@@ -188,7 +188,7 @@ Responses 流只实现文字回复（没有 function_call 事件）；文档示�
 
 | 签名 | 说明 |
 |---|---|
-| `class TokenBucket { capacity; refillPerSecond; tryTake(n, now); spend(n, now); waitFor(n, now); available(now); untilFull(now) }` | 令牌桶：连续补充到上限；`tryTake` 不够就不扣；`spend` 可以扣成负数（输出 token 事后按实际量扣）；`waitFor` 返回还要等的秒数 |
+| `class TokenBucket { capacity; refillPerSecond; tryTake(n, now); spend(n, now); waitFor(n, now); available(now); untilFull(now) }` | 令牌桶：连续补充到上限；`tryTake` 不够就不扣；`spend` 可以扣成负数（输出 token 事后按实际量扣）；`waitFor` 返回还要等的秒数。实现已搬到共享包 `@explorer/llm-core/ratelimit`（LLMOPS 的每用户限流也用），这里转导出，接口不变 |
 | `class RateLimiter(limits: { rpm, itpm, otpm })` | 三个桶：`admit(inputTokens, now)` 放行并扣请求和输入，或返回 `{ ok: false, limit, waitSeconds, retryAfter }`（retryAfter 是向上取整的整秒，至少 1；缺口最大的桶决定）；`recordOutput(n, now)`；`headers(now, epoch)` 给出 `anthropic-ratelimit-{requests,input-tokens,output-tokens}-{limit,remaining,reset}`（reset 是 RFC 3339，remaining 不取整，真实响应里 token 余量取整到千） |
 | `DEFAULT_POLICY`（2 次、500 ms 起步、8000 ms 封顶、抖动 25%）、`waitBefore(policy, attempt, rand, retryAfter?)` | 有 0–60 秒的 retry-after 就照它；否则 min(封顶, 起步 × 2^n) × (1 − 抖动 × rand())；返回 `{ ms, source, ceiling }` |
 | `sdkRetries(status)`、`worthRetrying({ status, hopeless? })` | SDK 按状态码重试（408、409、429、5xx）；月度消费上限的 429 SDK 会重试但没用 |

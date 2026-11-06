@@ -12,7 +12,7 @@ import { encodeJson } from '@explorer/llm-core/json';
 import type { ToolDefinition } from '@explorer/llm-core/anthropic';
 import type { AgentRun } from './loop';
 import { formatErrors, validate, type JsonSchema } from './schema';
-import { daysBetween, NO_REASON_RETURN_DAYS, POLICIES, QUALITY_RETURN_DAYS, type ReturnReason, type ReturnTicket, type ShopState } from './shop';
+import { daysBetween, NO_REASON_RETURN_DAYS, POLICIES, QUALITY_RETURN_DAYS, SHOP_TOOL_DEFS, type ReturnReason, type ReturnTicket, type ShopState } from './shop';
 
 /** MCP ToolAnnotations 的四个提示（规范里都是 hint，不可信的服务器给的不能当真）。 */
 export interface ToolHints {
@@ -54,11 +54,7 @@ const fail = (content: string, data?: unknown): ToolOutcome => ({ content, is_er
 // ---------- 小铺的工具 ----------
 
 export const GET_ORDER: ToolSpec = {
-  name: 'get_order',
-  title: '查订单',
-  description: '按订单号查询订单：商品、实付金额、物流状态、签收日期。',
-  input_schema: { type: 'object', properties: { order_id: { type: 'string', description: '订单号，如 A1024', pattern: '^A\\d{4}$' } }, required: ['order_id'], additionalProperties: false },
-  hints: { readOnlyHint: true, openWorldHint: false },
+  ...SHOP_TOOL_DEFS.get_order,
   run(input, { shop }) {
     const order = shop.orders.get(String(input.order_id));
     if (!order) return fail(`找不到订单 ${String(input.order_id)}`);
@@ -73,16 +69,7 @@ export interface PolicyHit {
 }
 
 export const SEARCH_POLICY: ToolSpec = {
-  name: 'search_policy',
-  title: '查店铺规则',
-  description: '检索店铺的售后、退款、运费规则，返回最相关的几段原文。',
-  input_schema: {
-    type: 'object',
-    properties: { query: { type: 'string', description: '要查的问题或关键词', minLength: 2 }, top_k: { type: 'integer', description: '返回几段，默认 2', minimum: 1, maximum: 5 } },
-    required: ['query'],
-    additionalProperties: false,
-  },
-  hints: { readOnlyHint: true, openWorldHint: false },
+  ...SHOP_TOOL_DEFS.search_policy,
   run(input) {
     // bm25 按原顺序返回每段的分数：这里按分数从高到低排（同分保持原顺序），取前 k 段。
     const k = typeof input.top_k === 'number' ? input.top_k : 2;
@@ -100,20 +87,7 @@ export const SEARCH_POLICY: ToolSpec = {
 export const returnIdOf = (today: string, seq: number): string => `R${today.replace(/-/g, '')}-${String(seq).padStart(3, '0')}`;
 
 export const CREATE_RETURN: ToolSpec = {
-  name: 'create_return',
-  title: '建退货单',
-  description: '为已签收的订单创建退货单。质量问题签收后 7 天内可退，运费由店铺承担；无理由退货 7 天内，运费由买家承担。',
-  input_schema: {
-    type: 'object',
-    properties: {
-      order_id: { type: 'string', description: '订单号', pattern: '^A\\d{4}$' },
-      reason: { type: 'string', enum: ['quality', 'no_reason'], description: 'quality 质量问题，no_reason 无理由' },
-      note: { type: 'string', description: '问题描述', maxLength: 100 },
-    },
-    required: ['order_id', 'reason'],
-    additionalProperties: false,
-  },
-  hints: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  ...SHOP_TOOL_DEFS.create_return,
   run(input, { shop }) {
     const order = shop.orders.get(String(input.order_id));
     if (!order) return fail(`找不到订单 ${String(input.order_id)}`);
@@ -139,16 +113,7 @@ export const CREATE_RETURN: ToolSpec = {
 };
 
 export const ISSUE_REFUND: ToolSpec = {
-  name: 'issue_refund',
-  title: '退款',
-  description: '按退货单把钱退回原支付账户。会真的打款，调用前必须得到用户确认。',
-  input_schema: {
-    type: 'object',
-    properties: { order_id: { type: 'string', pattern: '^A\\d{4}$' }, amount: { type: 'number', description: '退款金额，元', minimum: 0.01 } },
-    required: ['order_id', 'amount'],
-    additionalProperties: false,
-  },
-  hints: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
+  ...SHOP_TOOL_DEFS.issue_refund,
   run(input, { shop }) {
     const order = shop.orders.get(String(input.order_id));
     if (!order) return fail(`找不到订单 ${String(input.order_id)}`);

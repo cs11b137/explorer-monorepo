@@ -13,5 +13,15 @@ export function fnv1a64(bytes: readonly number[]): bigint {
   return hash;
 }
 
+/**
+ * 32 位 FNV-1a（偏移基 0x811c9dc5、质数 16777619）。LLMOPS 的特征哈希用它把字符 n-gram 映射到桶号：
+ * 比 64 位版快得多（不用 BigInt），桶数只有几百到几千，32 位足够。
+ */
+export function fnv1a32(bytes: readonly number[]): number {
+  let hash = 0x811c9dc5;
+  for (const byte of bytes) hash = Math.imul(hash ^ (byte & 0xff), 16777619);
+  return hash >>> 0;
+}
+
 /** u64 小端字节。 */
 export const u64Bytes = (value: bigint): number[] => Array.from({ length: 8 }, (_, i) => Number((value >> BigInt(i * 8)) & 0xffn));
