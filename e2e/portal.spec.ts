@@ -2,8 +2,17 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { mirrorUrl, rewriteMirror } from '../scripts/protocol-mirror';
+import { LESSONS as algo } from '../modules/algo/src/lessons';
+import { LESSONS as codegen } from '../modules/codegen/src/lessons';
+import { LESSONS as cpu } from '../modules/cpu/src/lessons';
+import { LESSONS as db } from '../modules/db/src/lessons';
+import { LESSONS as llm } from '../modules/llm/src/lessons';
+import { LESSONS as os } from '../modules/os/src/lessons';
 
-const MODULES = ['protocol', 'os', 'algo', 'codegen', 'cpu', 'db'];
+const MODULES = ['protocol', 'os', 'algo', 'codegen', 'cpu', 'db', 'llm'];
+
+/** 每个模块的课数。引擎模块直接取各自的 LESSONS，加课不用改这里；Protocol 是镜像，固定 14 课。 */
+const LESSON_COUNTS: Record<string, number> = { protocol: 14, os: os.length, algo: algo.length, codegen: codegen.length, cpu: cpu.length, db: db.length, llm: llm.length };
 
 test('首页没有资源错误，也不横向溢出', async ({ page }) => {
   const problems: string[] = [];
@@ -33,7 +42,7 @@ for (const name of MODULES) {
     await page.goto('./');
     const [course] = await Promise.all([context.waitForEvent('page'), page.click(`.course[data-module="${name}"]`)]);
     await expect(course).toHaveURL(`modules/${name}/`);
-    await expect(course.locator('.proto')).toHaveCount(14);
+    await expect(course.locator('.proto')).toHaveCount(LESSON_COUNTS[name]);
     await expect(page).toHaveURL('./');
     expect(problems).toEqual([]);
   });
@@ -65,7 +74,7 @@ test('课程可以按分类筛选', async ({ page }) => {
   await expect(page.locator('[data-filter="all"] .count')).toHaveText(String(MODULES.length));
   await expect(visible).toHaveCount(MODULES.length);
 
-  const expected: Record<string, string[]> = { system: ['cpu', 'os', 'codegen'], 'network-data': ['protocol', 'db'], algorithm: ['algo'] };
+  const expected: Record<string, string[]> = { system: ['cpu', 'os', 'codegen'], 'network-data': ['protocol', 'db'], algorithm: ['algo'], ai: ['llm'] };
   for (const [filter, modules] of Object.entries(expected)) {
     await page.click(`[data-filter="${filter}"]`);
     await expect(page.locator(`[data-filter="${filter}"]`)).toHaveAttribute('aria-pressed', 'true');
@@ -103,10 +112,10 @@ for (const name of MODULES.filter((module) => module !== 'protocol')) {
 test('不带斜杠的模块地址也能进入', async ({ page }) => {
   await page.goto('modules/os?x=1');
   await expect(page).toHaveURL('modules/os/?x=1');
-  await expect(page.locator('.proto')).toHaveCount(14);
+  await expect(page.locator('.proto')).toHaveCount(LESSON_COUNTS.os);
   await page.goto('modules/protocol');
   await expect(page).toHaveURL('modules/protocol/');
-  await expect(page.locator('.proto')).toHaveCount(14);
+  await expect(page.locator('.proto')).toHaveCount(LESSON_COUNTS.protocol);
 });
 
 test('不存在的地址返回 404，不会落回首页', async ({ request }) => {
@@ -125,7 +134,7 @@ test('404 页面能加载样式，并能回到首页', async ({ page }) => {
   expect(problems).toEqual([]);
   await page.click('.portal-head a');
   await expect(page).toHaveURL('./');
-  await expect(page.locator('.course')).toHaveCount(6);
+  await expect(page.locator('.course')).toHaveCount(MODULES.length);
 });
 
 test('部署的 Protocol 镜像只改动了路径，二进制文件逐字节不变', async ({ request, baseURL }) => {

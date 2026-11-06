@@ -1,0 +1,14 @@
+{
+  "name": "llm-explorer",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "train": "vite-node scripts/train.ts"
+  },
+  "dependencies": {
+    "@explorer/engine": "*"
+  }
+}

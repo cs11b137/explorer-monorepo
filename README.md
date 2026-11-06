@@ -1,6 +1,6 @@
 # Explorer
 
-交互式教学主站：逐事件动画 + 逐字节解码。首页是课程入口，六门课程是主站下的模块，全部由一个服务提供。
+交互式教学主站：逐事件动画 + 逐字节解码。首页是课程入口，七门课程是主站下的模块，全部由一个服务提供。
 
 线上地址：<https://wuwenjunpr.site/explorer-monorepo/>，<https://cs-explorer.pages.dev/>
 
@@ -13,7 +13,8 @@
 | `modules/codegen` | CODEGEN EXPLORER | 编译原理 | `/modules/codegen/` |
 | `modules/cpu` | CPU EXPLORER | 计算机组成原理 | `/modules/cpu/` |
 | `modules/db` | DB EXPLORER | 数据库系统原理 | `/modules/db/` |
-| `packages/engine` | `@explorer/engine` | 后五个模块共用的引擎 | |
+| `modules/llm` | LLM EXPLORER | 大模型原理。课程里运行一个迷你 Transformer，接口见其 `README.md` | `/modules/llm/` |
+| `packages/engine` | `@explorer/engine` | 除 Protocol 外六个模块共用的引擎 | |
 
 ## 常用命令
 
@@ -73,7 +74,7 @@ npm run mirror:protocol  # 从线上重新镜像 Protocol Explorer
 
 ## 改引擎时要注意
 
-引擎的改动会影响五个站。`stage.ts` 的默认行为不要随便动：所有动画共用一个时钟，多排一个哪怕是空的等待任务，后面动画的时间量化都会变。
+引擎的改动会影响六个站。`stage.ts` 的默认行为不要随便动：所有动画共用一个时钟，多排一个哪怕是空的等待任务，后面动画的时间量化都会变。
 
 样式层叠也要留意：`site.css` 在引擎样式之后加载，所以它和引擎里同优先级的规则冲突时会胜出，包括响应式规则。站点要改只在宽屏生效的规则时，选择器要写窄，比如 `.is-stacked:not(.is-single) .workspace`。
 
@@ -83,4 +84,4 @@ npm run mirror:protocol  # 从线上重新镜像 Protocol Explorer
 2. 改 `src/site.ts`，把存储前缀、品牌、标签页、7 档色块换掉；`theme-init.js` 里的存储键要和前缀一致。
 3. 写 `lessons/`、`scene/devices.ts`。引擎的事件不够用时，在 `scene/plugin.ts` 里加。
 4. 按新站的字符重新裁剪字体。
-5. 在根目录 `index.html` 加课程卡片，在 `playwright.config.ts` 和 `e2e/portal.spec.ts` 的模块列表里加上它。
+5. 在根目录 `index.html` 加课程卡片，在 `playwright.config.ts` 和 `e2e/portal.spec.ts` 的模块列表里加上它；`portal.spec.ts` 的 `LESSON_COUNTS` 从模块的 `LESSONS` 取课数。
