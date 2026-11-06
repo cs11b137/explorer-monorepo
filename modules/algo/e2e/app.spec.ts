@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const LESSON_IDS = ['dynarray', 'linkedlist', 'ringqueue', 'hashtable', 'binarysearch', 'heap', 'avl', 'unionfind', 'bfs', 'dijkstra', 'quicksort', 'mergesort', 'lcs', 'kmp'];
+const LESSON_IDS = ['dynarray', 'linkedlist', 'stack', 'ringqueue', 'hashtable', 'binarysearch', 'bst', 'heap', 'avl', 'unionfind', 'bfs', 'dfs', 'dijkstra', 'mst', 'quicksort', 'mergesort', 'radixsort', 'lcs', 'backtrack', 'kmp'];
 
 function watchErrors(page: Page): string[] {
   const errors: string[] = [];
@@ -93,13 +93,13 @@ test.describe('播放控制', () => {
   test('标签页筛选', async ({ page }) => {
     await open(page);
     await page.click('.tab[data-group="linear"]');
-    await expect(page.locator('.proto:visible')).toHaveCount(5);
+    await expect(page.locator('.proto:visible')).toHaveCount(6);
     await page.click('.tab[data-group="tree"]');
-    await expect(page.locator('.proto:visible')).toHaveCount(5);
+    await expect(page.locator('.proto:visible')).toHaveCount(8);
     await page.click('.tab[data-group="strategy"]');
-    await expect(page.locator('.proto:visible')).toHaveCount(4);
+    await expect(page.locator('.proto:visible')).toHaveCount(6);
     await page.click('.tab[data-group="all"]');
-    await expect(page.locator('.proto:visible')).toHaveCount(14);
+    await expect(page.locator('.proto:visible')).toHaveCount(LESSON_IDS.length);
   });
 });
 

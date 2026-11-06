@@ -7,11 +7,20 @@ import { hasArt, NODE_SPECS } from '../src/scene/devices';
 import { boundsOf, itemsOf, lessonBounds, type Box } from '../src/scene/ds';
 
 describe('课程清单', () => {
-  it('共 14 课，分组是 5 / 5 / 4，顺序和任务书一致', () => {
-    expect(LESSONS.length).toBe(14);
-    expect(LESSONS.filter((lesson) => lesson.group === 'linear').map((lesson) => lesson.id)).toEqual(['dynarray', 'linkedlist', 'ringqueue', 'hashtable', 'binarysearch']);
-    expect(LESSONS.filter((lesson) => lesson.group === 'tree').map((lesson) => lesson.id)).toEqual(['heap', 'avl', 'unionfind', 'bfs', 'dijkstra']);
-    expect(LESSONS.filter((lesson) => lesson.group === 'strategy').map((lesson) => lesson.id)).toEqual(['quicksort', 'mergesort', 'lcs', 'kmp']);
+  it('共 20 课，分组是 6 / 8 / 6，顺序和任务书一致', () => {
+    expect(LESSONS.length).toBe(20);
+    expect(LESSONS.filter((lesson) => lesson.group === 'linear').map((lesson) => lesson.id)).toEqual(['dynarray', 'linkedlist', 'stack', 'ringqueue', 'hashtable', 'binarysearch']);
+    expect(LESSONS.filter((lesson) => lesson.group === 'tree').map((lesson) => lesson.id)).toEqual(['bst', 'heap', 'avl', 'unionfind', 'bfs', 'dfs', 'dijkstra', 'mst']);
+    expect(LESSONS.filter((lesson) => lesson.group === 'strategy').map((lesson) => lesson.id)).toEqual(['quicksort', 'mergesort', 'radixsort', 'lcs', 'backtrack', 'kmp']);
+  });
+
+  it('同组的课连成一串：除最后一课外，「下一课」都指向列表里的下一课', () => {
+    LESSONS.forEach((lesson, index) => {
+      const next = LESSONS[index + 1];
+      const fact = lesson.outro.facts.find(([label]) => label === '下一课');
+      if (next) expect(fact?.[1], lesson.id).toBe(next.name);
+      else expect(fact, lesson.id).toBeUndefined();
+    });
   });
 
   it('课程 id 不重复', () => {
@@ -21,9 +30,9 @@ describe('课程清单', () => {
   it('复杂度区间和各课的算法相符', () => {
     const layer = Object.fromEntries(LESSONS.map((lesson) => [lesson.id, lesson.layer]));
     expect(layer).toEqual({
-      dynarray: [1, 3], linkedlist: [1, 3], ringqueue: [1, 1], hashtable: [1, 3], binarysearch: [1, 2],
-      heap: [1, 2], avl: [2, 2], unionfind: [1, 2], bfs: [3, 3], dijkstra: [4, 4],
-      quicksort: [4, 5], mergesort: [4, 4], lcs: [5, 5], kmp: [3, 3],
+      dynarray: [1, 3], linkedlist: [1, 3], stack: [1, 1], ringqueue: [1, 1], hashtable: [1, 3], binarysearch: [1, 2],
+      bst: [2, 3], heap: [1, 2], avl: [2, 2], unionfind: [1, 2], bfs: [3, 3], dfs: [3, 3], dijkstra: [4, 4], mst: [4, 4],
+      quicksort: [4, 5], mergesort: [4, 4], radixsort: [3, 3], lcs: [5, 5], backtrack: [7, 7], kmp: [3, 3],
     });
   });
 });

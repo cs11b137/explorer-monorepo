@@ -24,3 +24,12 @@ AT(avl_node, key, 0); AT(avl_node, height, 4); AT(avl_node, left, 8); AT(avl_nod
 
 struct pq_item { int dist; int node; };
 AT(pq_item, dist, 0); AT(pq_item, node, 4); SZ(pq_item, 8);
+
+struct stack { int *data; int top; int cap; };
+AT(stack, data, 0); AT(stack, top, 8); AT(stack, cap, 12); SZ(stack, 16);
+
+struct bst_node { int key; struct bst_node *left; struct bst_node *right; };
+AT(bst_node, key, 0); AT(bst_node, left, 8); AT(bst_node, right, 16); SZ(bst_node, 24);
+
+struct edge { int u; int v; int w; };
+AT(edge, u, 0); AT(edge, v, 4); AT(edge, w, 8); SZ(edge, 12);

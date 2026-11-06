@@ -296,6 +296,6 @@ export const dijkstraLesson: Lesson = {
     title: '贪心成立是因为没有负边',
     desc: '堆把「找最近」从 O(V) 降到 O(log V)',
     text: '不用堆时，每次在数组里找最小要 O(V)，总共 O(V²)，稠密图上反而合适。二叉堆版本是 O((V + E) log V)，适合稀疏图。prev 数组记下每个顶点从谁过来，沿着它倒推就能还原完整路径。',
-    facts: [['前提', '边权非负'], ['堆版本', 'O((V + E) log V)'], ['下一课', 'QUICK SORT']],
+    facts: [['前提', '边权非负'], ['堆版本', 'O((V + E) log V)'], ['下一课', 'KRUSKAL']],
   },
 };
