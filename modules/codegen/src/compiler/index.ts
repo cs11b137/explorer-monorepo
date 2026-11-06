@@ -15,6 +15,8 @@ import { link } from './link';
 import { buildSlr, EXPR_GRAMMAR, runLr } from './lr';
 import { FULL_POOL, linearScan } from './regalloc';
 import { RBX, RCX, RDX, RSI } from './x86';
+import { minimize, subset, thompson, TOKEN_RULES } from './regex';
+import { dynLink, LD_SO, load, resolve } from './dynlink';
 
 export interface FunctionPipeline {
   o0: IrFunc;
@@ -91,5 +93,16 @@ export const LR_RUN = runLr(EXPR_GRAMMAR, LR_TABLE, LR_INPUT);
 export const TIGHT_POOL = [RCX, RDX, RSI, RBX];
 export const TIGHT_ALLOC = linearScan(SUM.back.analysis, TIGHT_POOL);
 export const FULL_ALLOC_POOL = FULL_POOL;
+
+/** 正则课：标识符和数字两条规则，经 Thompson 构造、子集构造、最小化。 */
+export const NFA = thompson(TOKEN_RULES);
+export const DFA = subset(NFA, TOKEN_RULES);
+export const MIN_DFA = minimize(DFA);
+
+/** 动态链接课：scale.o 链接成 libscale.so，sum.o 链接成依赖它的可执行文件，再模拟一次延迟绑定。 */
+export const LIBSCALE = dynLink('lib', { objects: [SCALE_OBJ.object], libs: [], name: 'libscale.so', soname: 'libscale.so' });
+export const DYN_EXE = dynLink('exe', { objects: [MAIN.object], libs: [LIBSCALE], name: 'a.out', interp: LD_SO });
+export const LOADED = load(DYN_EXE);
+export const RESOLVED = resolve(DYN_EXE, [LIBSCALE], LOADED, 0);
 
 export { fmtBody, slotNames };

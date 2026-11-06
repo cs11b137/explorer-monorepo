@@ -1,10 +1,12 @@
 /** ELF64 目标文件的写入和解析。布局依据 System V gABI 和 x86-64 psABI，节顺序和 LLVM MC 相同，便于和 clang 逐字节对照。 */
 import type { Assembled } from './emit';
 
-export const SHT = { NULL: 0, PROGBITS: 1, SYMTAB: 2, STRTAB: 3, RELA: 4, NOBITS: 8 } as const;
+export const SHT = { NULL: 0, PROGBITS: 1, SYMTAB: 2, STRTAB: 3, RELA: 4, HASH: 5, DYNAMIC: 6, NOBITS: 8, DYNSYM: 11, GNU_HASH: 0x6ffffff6 } as const;
 export const SHF = { WRITE: 1, ALLOC: 2, EXECINSTR: 4, INFO_LINK: 0x40 } as const;
 export const R_TYPE = { R_X86_64_PC32: 2, R_X86_64_PLT32: 4 } as const;
-export const SHT_NAME: Record<number, string> = { 0: 'SHT_NULL', 1: 'SHT_PROGBITS', 2: 'SHT_SYMTAB', 3: 'SHT_STRTAB', 4: 'SHT_RELA', 8: 'SHT_NOBITS' };
+export const SHT_NAME: Record<number, string> = {
+  0: 'SHT_NULL', 1: 'SHT_PROGBITS', 2: 'SHT_SYMTAB', 3: 'SHT_STRTAB', 4: 'SHT_RELA', 5: 'SHT_HASH', 6: 'SHT_DYNAMIC', 8: 'SHT_NOBITS', 11: 'SHT_DYNSYM', 0x6ffffff6: 'SHT_GNU_HASH',
+};
 
 export interface Section {
   index: number;
@@ -198,10 +200,10 @@ export function writeObject({ text, globals, textAlign = 16 }: ObjectInput): Obj
   return { bytes: file.bytes, sections, symbols, relas, strtab: { offset: strtabOffset, size: strtabData.length }, shoff };
 }
 
-const rdU16 = (b: ArrayLike<number>, o: number) => b[o] | (b[o + 1] << 8);
-const rdU32 = (b: ArrayLike<number>, o: number) => (rdU16(b, o) | (rdU16(b, o + 2) << 16)) >>> 0;
-const rdU64 = (b: ArrayLike<number>, o: number) => BigInt(rdU32(b, o)) | (BigInt(rdU32(b, o + 4)) << 32n);
-const rdCstr = (b: ArrayLike<number>, o: number) => {
+export const rdU16 = (b: ArrayLike<number>, o: number) => b[o] | (b[o + 1] << 8);
+export const rdU32 = (b: ArrayLike<number>, o: number) => (rdU16(b, o) | (rdU16(b, o + 2) << 16)) >>> 0;
+export const rdU64 = (b: ArrayLike<number>, o: number) => BigInt(rdU32(b, o)) | (BigInt(rdU32(b, o + 4)) << 32n);
+export const rdCstr = (b: ArrayLike<number>, o: number) => {
   let text = '';
   for (let at = o; b[at]; at++) text += String.fromCharCode(b[at]);
   return text;

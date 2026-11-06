@@ -5,6 +5,7 @@ import type { Token } from '../compiler/lexer';
 import type { PlacedLine } from '../compiler/emit';
 import { REG32, REG64 } from '../compiler/x86';
 import { SHT_NAME, type ObjectFile, type RelaEntry, type Section, type SymEntry } from '../compiler/elf';
+import { DT_NAME, type DynEntry, type DynImage, type DynSym, type OutSection, type PltInsn } from '../compiler/dynlink';
 
 let nextLayer = 0;
 
@@ -258,5 +259,122 @@ export function relaEntry(object: ObjectFile, rela: RelaEntry, color: Color = 'v
   put('r_info · 类型', `${rela.type} (${typeName})`, 8, 4, rela.type === 2 ? '计算方式 S + A − P，结果是 32 位相对地址。' : '计算方式 L + A − P。L 是符号的 PLT 项；静态链接到确定的函数时链接器可以直接用函数地址。');
   put('r_info · 符号', `${rela.symIndex} (${rela.symName})`, 12, 4, '高 32 位是符号表下标。');
   put('r_addend', rela.addend, 16, 8, '加数 A。写成 −4 是因为 CPU 算 RIP 相对地址时，RIP 已经指向这 4 字节之后。');
+  return layer;
+}
+
+const sliceAt = (section: OutSection, address: number, size: number) => section.bytes.slice(address - section.addr, address - section.addr + size);
+
+/** 动态符号表的一项：Elf64_Sym，24 字节。字节取自链接结果的 .dynsym。 */
+export function dynSymEntry(image: DynImage, sym: DynSym, color: Color = 'amber'): LayerWriter {
+  const section = image.sections.find((item) => item.name === '.dynsym')!;
+  const b = sliceAt(section, sym.addr, 24);
+  const layer = makeLayer(`${image.name} · .dynsym #${sym.index} · ${sym.name || '空'}`, color, `地址 ${hex(sym.addr)}`);
+  layer.addr = sym.addr;
+  const put = (name: string, value: string | number, offset: number, size: number, note?: string) => layer.field(name, value, () => layer.raw(b.slice(offset, offset + size)), { note });
+  put('st_name', `${sym.nameOff} → "${sym.name}"`, 0, 4, '名字在 .dynstr 里的偏移。动态符号表有自己的字符串表，运行时只加载这一份，.symtab 可以整个删掉。');
+  put('st_info', `${hex(sym.info)} (${BIND[sym.info >> 4]} ${TYPE[sym.info & 15]})`, 4, 1, '高 4 位是绑定，低 4 位是类型。');
+  put('st_other', 0, 5, 1, '可见性 DEFAULT：别的模块可以引用它。');
+  put('st_shndx', sym.shndx ? `${sym.shndx} (${image.sections[sym.shndx - 1]?.name ?? ''})` : '0 (SHN_UNDEF)', 6, 2, sym.shndx ? '定义在这个模块的第几个节。' : '这个模块里没有定义，运行时由 ld.so 到别的模块里找。');
+  put('st_value', hex(sym.value), 8, 8, sym.shndx ? (image.kind === 'lib' ? '相对库的加载地址。库放在哪里，就要加上那个基址。' : '链接后的地址。') : '未定义，所以是 0。');
+  put('st_size', sym.size, 16, 8);
+  return layer;
+}
+
+/** .rela.plt 的一项：Elf64_Rela，24 字节，类型 R_X86_64_JUMP_SLOT。 */
+export function jumpSlot(image: DynImage, index: number, color: Color = 'violet'): LayerWriter {
+  const section = image.sections.find((item) => item.name === '.rela.plt')!;
+  const at = section.addr + index * 24;
+  const b = sliceAt(section, at, 24);
+  const symIndex = le(b.slice(12, 16));
+  const layer = makeLayer(`Elf64_Rela · .rela.plt[${index}]`, color, `地址 ${hex(at)}`);
+  layer.addr = at;
+  const put = (name: string, value: string | number, from: number, size: number, note?: string) => layer.field(name, value, () => layer.raw(b.slice(from, from + size)), { note });
+  put('r_offset', hex(le(b.slice(0, 8))), 0, 8, '要回填的位置：一个 GOT 槽的运行时地址。动态重定位写的是地址，不是相对节的偏移。');
+  put('r_info · 类型', `${le(b.slice(8, 12))} (R_X86_64_JUMP_SLOT)`, 8, 4, '计算方式就是 S：把符号的地址原样写进 8 字节的槽。');
+  put('r_info · 符号', `${symIndex} (${image.dynsym[symIndex]?.name})`, 12, 4, '下标指向 .dynsym，不是 .symtab。');
+  put('r_addend', signed(le(b.slice(16, 24)), 8), 16, 8, 'JUMP_SLOT 用不到加数。');
+  return layer;
+}
+
+/** .dynamic 的一项：Elf64_Dyn，16 字节，标签加数值。 */
+export function dynEntry(entry: DynEntry, image: DynImage, note?: string, color: Color = 'blue'): LayerWriter {
+  const section = image.sections.find((item) => item.name === '.dynamic')!;
+  const b = sliceAt(section, entry.addr, 16);
+  const layer = makeLayer(`Elf64_Dyn · ${DT_NAME[entry.tag] ?? entry.tag}`, color, `地址 ${hex(entry.addr)}`);
+  layer.addr = entry.addr;
+  layer.field('d_tag', `${hex(entry.tag)} (${DT_NAME[entry.tag] ?? '?'})`, () => layer.raw(b.slice(0, 8)), { note: '这一项说的是什么。' });
+  layer.field('d_val / d_ptr', hex(entry.value), () => layer.raw(b.slice(8, 16)), { note });
+  return layer;
+}
+
+/** .dynamic 里挑出的几项：一项一层，字节都是原样。 */
+export function dynEntries(image: DynImage, tags: number[], notes: Record<number, string> = {}, color: Color = 'blue'): LayerWriter[] {
+  return image.dynamic.filter((entry) => tags.includes(entry.tag)).map((entry) => dynEntry(entry, image, notes[entry.tag], color));
+}
+
+type PltPart = PltInsn['parts'][number]['kind'];
+const PLT_PART: Record<PltPart, string> = { opcode: '操作码', modrm: 'ModRM', disp: '位移', imm: '立即数', rel: '相对位移', nop: '多字节 nop' };
+
+/** PLT 里的一条指令。notes 按字节分段给出说明。 */
+export function pltInsn(insn: PltInsn, notes: Partial<Record<PltPart, string>> = {}, color: Color = 'blue'): LayerWriter {
+  const layer = makeLayer(insn.text, color, `${hex(insn.addr)} · ${insn.bytes.length} 字节`);
+  layer.addr = insn.addr;
+  for (const part of insn.parts) {
+    const slice = insn.bytes.slice(part.from, part.to);
+    const from = layer.length;
+    const shown = slice.map(hexByte).join(' ');
+    if (part.kind === 'modrm') {
+      const byte = slice[0];
+      const ext = (byte >> 3) & 7;
+      layer.field('ModRM', `0x${shown}`, () => layer.raw(slice), { note: notes.modrm ?? 'mod=00、rm=101 表示 RIP 相对寻址，后面跟 4 字节位移。' });
+      layer.over('mod · 位 7–6', (byte >> 6).toString(2).padStart(2, '0'), from, from + 1);
+      layer.over('reg · 位 5–3', ext.toString(2).padStart(3, '0'), from, from + 1, { note: `操作码扩展 /${ext}：${ext === 6 ? 'FF /6 是 push' : 'FF /4 是间接 jmp'}。` });
+      layer.over('rm · 位 2–0', (byte & 7).toString(2).padStart(3, '0'), from, from + 1, { note: '101：RIP 相对。' });
+    } else if (part.kind === 'disp' || part.kind === 'rel' || part.kind === 'imm') {
+      const value = signed(le(slice), slice.length);
+      layer.field(PLT_PART[part.kind], part.kind === 'imm' ? String(value) : `${value < 0 ? '-' : ''}0x${Math.abs(value).toString(16)}`, () => layer.raw(slice), { note: notes[part.kind] });
+    } else {
+      layer.field(PLT_PART[part.kind], `0x${shown}`, () => layer.raw(slice), { note: notes[part.kind] });
+    }
+  }
+  return layer;
+}
+
+/** .got.plt 的一个槽：8 字节地址。example 为真时是加载后才有的值，每次运行都可能不同。 */
+export function gotSlot(index: number, addr: number, value: number, note: string, example = false, color: Color = 'amber'): LayerWriter {
+  const layer = makeLayer(`GOT[${index}]`, color, `地址 ${hex(addr)}`);
+  layer.addr = addr;
+  layer.field(`GOT[${index}]`, hex(value), () => layer.u64(value), { note, example });
+  return layer;
+}
+
+/** .gnu.hash 整节：头 16 字节、布隆过滤器、桶、哈希链。 */
+export function gnuHashTable(image: DynImage, color: Color = 'teal'): LayerWriter {
+  const section = image.sections.find((item) => item.name === '.gnu.hash')!;
+  const b = section.bytes;
+  const u = (at: number) => le(b.slice(at, at + 4));
+  const nbuckets = u(0);
+  const maskWords = u(8);
+  const layer = makeLayer(`${image.name} · .gnu.hash`, color, `${section.size} 字节`);
+  layer.addr = section.addr;
+  const put = (name: string, value: string | number, from: number, size: number, note?: string) => layer.field(name, value, () => layer.raw(b.slice(from, from + size)), { note });
+  put('nbuckets', nbuckets, 0, 4, '桶数。名字的哈希对它取余，决定从哪个桶查。');
+  put('symoffset', u(4), 4, 4, '.dynsym 里从这一项开始的符号才进哈希表，前面是未定义的符号，查找时不用看。');
+  put('bloom_size', maskWords, 8, 4, '布隆过滤器有几个 64 位字。');
+  put('bloom_shift', u(12), 12, 4, '第二个布隆位取哈希右移这么多位。');
+  for (let word = 0; word < maskWords; word++) put(`bloom[${word}]`, hex(le(b.slice(16 + word * 8, 24 + word * 8))), 16 + word * 8, 8, '每个定义的符号在这里置 2 位。查找时两位里有一位是 0，名字就一定不在这个模块里。');
+  const buckets = 16 + maskWords * 8;
+  for (let bucket = 0; bucket < nbuckets; bucket++) put(`buckets[${bucket}]`, u(buckets + bucket * 4), buckets + bucket * 4, 4, '这个桶的第一个符号在 .dynsym 里的下标，0 表示空桶。');
+  for (let at = buckets + nbuckets * 4, index = 0; at < b.length; at += 4, index++) put(`chain[${index}]`, hex(u(at)), at, 4, '符号名哈希值的高 31 位，最低位是 1 表示链到此为止。');
+  return layer;
+}
+
+/** 最小化后的 DFA 转移表：每个状态一行，每个字符类一个字节，取值是下一状态的编号，0xFF 表示没有转移。 */
+export function dfaTable(rows: Array<{ name: string; next: Array<number | null>; accept: string | null }>, symbols: string[], color: Color = 'green'): LayerWriter {
+  const layer = makeLayer('转移表', color, `${rows.length} 行 × ${symbols.length} 列`);
+  rows.forEach((row, index) => {
+    const shown = row.next.map((to, col) => `${symbols[col]}→${to === null ? '无' : rows[to].name}`).join(' ');
+    layer.field(`第 ${index} 行 · ${row.name}`, shown, () => layer.raw(row.next.map((to) => (to === null ? 0xff : to))), { note: row.accept ? `接受，产出 ${row.accept}。` : '不接受：停在这里说明还没读到完整的记号。' });
+  });
   return layer;
 }

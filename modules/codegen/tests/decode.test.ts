@@ -2,8 +2,9 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { LEXED, MAIN, SUM } from '../src/compiler';
-import { elfHeader, instruction, irLine, regNumber, registers, relaEntry, sectionHeader, symbolEntry, textBytes, tokenRecord, wire } from '../src/decode/structures';
+import { DYN_EXE, LEXED, LIBSCALE, MAIN, RESOLVED, SUM } from '../src/compiler';
+import { sectionOf } from '../src/compiler/dynlink';
+import { dfaTable, dynEntry, dynSymEntry, elfHeader, gnuHashTable, gotSlot, instruction, irLine, jumpSlot, pltInsn, regNumber, registers, relaEntry, sectionHeader, symbolEntry, textBytes, tokenRecord, wire } from '../src/decode/structures';
 import { decode, LayerWriter, type Byte } from '../src/decode/writer';
 import { encode, fmtIns, r32 } from '../src/compiler/x86';
 
@@ -233,5 +234,81 @@ describe('文本结构', () => {
     expect(slice('操作码')).toBe('mul');
     expect(slice('标志')).toBe('nsw');
     expect(slice('类型')).toBe('i32');
+  });
+});
+
+describe('动态链接的结构', () => {
+  const section = (image: typeof DYN_EXE, name: string) => sectionOf(image, name);
+  const slice = (image: typeof DYN_EXE, name: string, addr: number, size: number) => {
+    const found = section(image, name);
+    return found.bytes.slice(addr - found.addr, addr - found.addr + size);
+  };
+
+  it('Elf64_Sym（.dynsym）：24 字节，字节就是节里的那一项', () => {
+    for (const image of [DYN_EXE, LIBSCALE]) {
+      for (const sym of image.dynsym) {
+        const layer = dynSymEntry(image, sym);
+        expectContiguous(layer, 24);
+        expect(layer.bytes).toEqual(slice(image, '.dynsym', sym.addr, 24));
+      }
+    }
+    const scale = LIBSCALE.dynsym[1];
+    expect(fieldOf(dynSymEntry(LIBSCALE, scale), 'st_shndx').value).toBe('5 (.text)');
+    expect(fieldOf(dynSymEntry(DYN_EXE, DYN_EXE.dynsym[1]), 'st_shndx').value).toContain('SHN_UNDEF');
+  });
+
+  it('Elf64_Rela（.rela.plt）：r_offset 是 GOT[3] 的地址，类型 7，符号 1', () => {
+    const layer = jumpSlot(DYN_EXE, 0);
+    expectContiguous(layer, 24);
+    expect(u64(layer.bytes, 0)).toBe(0x203018n);
+    expect(u32(layer.bytes, 8)).toBe(7);
+    expect(u32(layer.bytes, 12)).toBe(1);
+    expect(fieldOf(layer, 'r_info · 符号').value).toBe('1 (scale)');
+  });
+
+  it('Elf64_Dyn：16 字节，标签在前，值在后', () => {
+    for (const entry of DYN_EXE.dynamic) {
+      const layer = dynEntry(entry, DYN_EXE);
+      expectContiguous(layer, 16);
+      expect(u64(layer.bytes, 0)).toBe(BigInt(entry.tag));
+      expect(u64(layer.bytes, 8)).toBe(BigInt(entry.value));
+    }
+    expect(fieldOf(dynEntry(DYN_EXE.dynamic[0], DYN_EXE), 'd_tag').value).toContain('DT_NEEDED');
+  });
+
+  it('PLT 的每条指令：字段拼起来正好是它的字节，ModRM 拆出 /6 和 /4', () => {
+    for (const insn of [...DYN_EXE.plt0, ...DYN_EXE.plt[0].insns]) {
+      const layer = pltInsn(insn);
+      expectContiguous(layer, insn.bytes.length);
+      expect(layer.bytes).toEqual(insn.bytes);
+    }
+    const [push, jmp] = DYN_EXE.plt0;
+    expect(fieldOf(pltInsn(push), 'reg').value).toBe('110');
+    expect(fieldOf(pltInsn(jmp), 'reg').value).toBe('100');
+    expect(fieldOf(pltInsn(push), '位移').value).toBe('0x1fc2');
+    expect(fieldOf(pltInsn(DYN_EXE.plt[0].insns[2]), '相对位移').value).toBe('-0x20');
+  });
+
+  it('GOT 槽：8 字节小端，加载后的值标成示例值', () => {
+    const layer = gotSlot(3, 0x203018, RESOLVED.address, '', true);
+    expectContiguous(layer, 8);
+    expect(u64(layer.bytes, 0)).toBe(BigInt(RESOLVED.address));
+    expect(fieldOf(layer, 'GOT[3]').example).toBe(true);
+  });
+
+  it('.gnu.hash：整节字节，头 16 字节、布隆字、桶、链', () => {
+    for (const image of [DYN_EXE, LIBSCALE]) {
+      const layer = gnuHashTable(image);
+      expectContiguous(layer, section(image, '.gnu.hash').size);
+      expect(layer.bytes).toEqual(section(image, '.gnu.hash').bytes);
+    }
+    expect(fieldOf(gnuHashTable(LIBSCALE), 'chain[0]').value).toBe('0x1057f68d');
+    expect(fieldOf(gnuHashTable(DYN_EXE), 'symoffset').value).toBe('2');
+  });
+
+  it('最小 DFA 的转移表：一格一个字节，0xFF 是没有转移', () => {
+    const layer = dfaTable([{ name: 'START', next: [1, 2], accept: null }, { name: 'ID', next: [1, 1], accept: 'identifier' }, { name: 'NUM', next: [null, 2], accept: 'numeric_constant' }], ['L', 'D']);
+    expectContiguous(layer, 6);
+    expect(layer.bytes).toEqual([1, 2, 1, 1, 0xff, 2]);
   });
 });

@@ -128,3 +128,6 @@ for (const file of readdirSync(join(OUT, 'programs')).filter((item) => item.ends
 save('runs.json', JSON.stringify(runs, null, 1));
 save('programs-o0.json', JSON.stringify(programIr, null, 1));
 console.log('向量已写入', OUT);
+
+// 动态链接的向量要用 lld，见 gen-dynlink.ts。
+await import('./gen-dynlink');

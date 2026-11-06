@@ -39,7 +39,18 @@ export interface GraphNode {
   dim?: boolean;
 }
 
-export interface GraphEdge { from: string; to: string; label?: string; tone?: Tone; bend?: number; dim?: boolean; dash?: boolean }
+export interface GraphEdge {
+  from: string;
+  to: string;
+  label?: string;
+  tone?: Tone;
+  /** 控制点横向偏移，用于竖直方向的边。 */
+  bend?: number;
+  /** 控制点纵向偏移，用于水平方向绕过中间节点的边：负数向上。自环取正数时画在节点下方。 */
+  lift?: number;
+  dim?: boolean;
+  dash?: boolean;
+}
 
 export type ArtView = { title: string; sub?: string } & (
   | { kind: 'code'; lines: CodeLine[]; focus?: number; size?: number }
@@ -340,18 +351,19 @@ function graph(view: Extract<ArtView, { kind: 'graph' }>, ctx: Ctx): string {
     let labelX = (a.x + b.x) / 2;
     let labelY = (a.y + b.y) / 2;
     if (edge.from === edge.to) {
-      // 自环：画在节点上方。
+      // 自环：默认画在节点上方，lift 为正时画在下方。
       const r = a.w / 2;
-      edges += `<path d="M${num(a.x - 6)},${num(a.y - r)} C${num(a.x - 20)},${num(a.y - r - 22)} ${num(a.x + 20)},${num(a.y - r - 22)} ${num(a.x + 6)},${num(a.y - r - 1)}" ${style}/>`;
-      labelY = a.y - r - 20;
-    } else if (edge.bend) {
-      const mx = (a.x + b.x) / 2 + edge.bend;
-      const my = (a.y + b.y) / 2;
+      const dir = edge.lift && edge.lift > 0 ? 1 : -1;
+      edges += `<path d="M${num(a.x - 6)},${num(a.y + dir * r)} C${num(a.x - 20)},${num(a.y + dir * (r + 22))} ${num(a.x + 20)},${num(a.y + dir * (r + 22))} ${num(a.x + 6)},${num(a.y + dir * (r + 1))}" ${style}/>`;
+      labelY = a.y + dir * (r + 20);
+    } else if (edge.bend || edge.lift) {
+      const mx = (a.x + b.x) / 2 + (edge.bend ?? 0);
+      const my = (a.y + b.y) / 2 + (edge.lift ?? 0);
       const [x1, y1] = borderPoint(a, mx, my);
       const [x2, y2] = borderPoint(b, mx, my);
       edges += `<path d="M${num(x1)},${num(y1)} Q${num(mx)},${num(my)} ${num(x2)},${num(y2)}" ${style}/>`;
-      // 标签放在靠近起点的位置，避开终点附近常见的方框。
-      const t = 0.36;
+      // 标签放在靠近起点的位置，避开终点附近常见的方框。绕行的边对称，放在顶点。
+      const t = edge.bend ? 0.36 : 0.5;
       labelX = (1 - t) ** 2 * x1 + 2 * t * (1 - t) * mx + t ** 2 * x2;
       labelY = (1 - t) ** 2 * y1 + 2 * t * (1 - t) * my + t ** 2 * y2;
     } else {

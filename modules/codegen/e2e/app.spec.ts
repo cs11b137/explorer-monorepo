@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const LESSON_IDS = ['lexer', 'llparser', 'lrparser', 'typecheck', 'irgen', 'dataflow', 'ssa', 'optimize', 'licm', 'isel', 'regalloc', 'frame', 'encoding', 'link'];
+const LESSON_IDS = ['regex', 'lexer', 'llparser', 'lrparser', 'typecheck', 'irgen', 'dataflow', 'ssa', 'optimize', 'licm', 'isel', 'regalloc', 'frame', 'encoding', 'link', 'dynlink'];
 
 function watchErrors(page: Page): string[] {
   const errors: string[] = [];
@@ -45,6 +45,8 @@ test.describe('产物面板', () => {
   test('播放时结构图直接显示中间产物，并随事件变化', async ({ page }) => {
     const errors = watchErrors(page);
     await open(page);
+    // 第一课是正则，词法课排第二。
+    await page.click('.proto[data-lesson="lexer"] .proto-row');
     await expect(page.locator('.art-panel[data-panel="src"]')).toContainText('int sum(int n)');
     await expect(page.locator('.art-panel[data-panel="toks"]')).toContainText('return');
     await page.click('[data-action="step"]');
@@ -61,6 +63,7 @@ test.describe('产物面板', () => {
   test('各种产物都能画出来', async ({ page }) => {
     await open(page);
     const expectations: Array<[string, string, string]> = [
+      ['regex', 'subset', 'START'],
       ['llparser', 'tree', '语法树'],
       ['lrparser', 'table', 'acc'],
       ['irgen', 'ir', 'load i32'],
@@ -69,6 +72,7 @@ test.describe('产物面板', () => {
       ['regalloc', 'regs', 'ebx'],
       ['encoding', 'list', '48 89 e5'],
       ['link', 'table', '0xfd4'],
+      ['dynlink', 'got', '7ffff7fc4000'],
     ];
     for (const [id, slot, text] of expectations) {
       await page.click(`.proto[data-lesson="${id}"] .proto-row`);
@@ -142,13 +146,13 @@ test.describe('播放控制', () => {
   test('标签页筛选', async ({ page }) => {
     await open(page);
     await page.click('.tab[data-group="front"]');
-    await expect(page.locator('.proto:visible')).toHaveCount(4);
+    await expect(page.locator('.proto:visible')).toHaveCount(5);
     await page.click('.tab[data-group="middle"]');
     await expect(page.locator('.proto:visible')).toHaveCount(5);
     await page.click('.tab[data-group="back"]');
-    await expect(page.locator('.proto:visible')).toHaveCount(5);
+    await expect(page.locator('.proto:visible')).toHaveCount(6);
     await page.click('.tab[data-group="all"]');
-    await expect(page.locator('.proto:visible')).toHaveCount(14);
+    await expect(page.locator('.proto:visible')).toHaveCount(16);
   });
 });
 

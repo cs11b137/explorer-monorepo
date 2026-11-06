@@ -7,15 +7,15 @@ import { renderArt, textWidth } from '../src/scene/art';
 import { NODE_SPECS } from '../src/scene/devices';
 
 describe('课程清单', () => {
-  it('共 14 课，分组是 4 / 5 / 5', () => {
-    expect(LESSONS.length).toBe(14);
-    expect(LESSONS.filter((lesson) => lesson.group === 'front').length).toBe(4);
+  it('共 16 课，分组是 5 / 5 / 6', () => {
+    expect(LESSONS.length).toBe(16);
+    expect(LESSONS.filter((lesson) => lesson.group === 'front').length).toBe(5);
     expect(LESSONS.filter((lesson) => lesson.group === 'middle').length).toBe(5);
-    expect(LESSONS.filter((lesson) => lesson.group === 'back').length).toBe(5);
+    expect(LESSONS.filter((lesson) => lesson.group === 'back').length).toBe(6);
   });
 
   it('课程 id 不重复，顺序符合流水线', () => {
-    expect(LESSONS.map((lesson) => lesson.id)).toEqual(['lexer', 'llparser', 'lrparser', 'typecheck', 'irgen', 'dataflow', 'ssa', 'optimize', 'licm', 'isel', 'regalloc', 'frame', 'encoding', 'link']);
+    expect(LESSONS.map((lesson) => lesson.id)).toEqual(['regex', 'lexer', 'llparser', 'lrparser', 'typecheck', 'irgen', 'dataflow', 'ssa', 'optimize', 'licm', 'isel', 'regalloc', 'frame', 'encoding', 'link', 'dynlink']);
   });
 
   it('编译阶段是 7 档', () => {

@@ -4,8 +4,8 @@ import type { ArtView } from '../scene/art';
 
 /** 编译流水线上的阶段和产物。每课取其中几个。 */
 export const NODE_IDS = [
-  'source', 'lexer', 'tokens', 'parser', 'tree', 'lrtable', 'symtab', 'irgen', 'ir', 'cfg',
-  'ssa', 'optimizer', 'isel', 'regalloc', 'frame', 'encoder', 'object', 'linker', 'image',
+  'regex', 'nfa', 'dfa', 'source', 'lexer', 'tokens', 'parser', 'tree', 'lrtable', 'symtab', 'irgen', 'ir', 'cfg',
+  'ssa', 'optimizer', 'isel', 'regalloc', 'frame', 'encoder', 'object', 'linker', 'image', 'got', 'ldso', 'shlib',
 ] as const;
 export type NodeId = (typeof NODE_IDS)[number];
 
@@ -13,8 +13,8 @@ export type { Color, Fact };
 
 /** 轨迹表「类型」列的取值。 */
 export type TraceType =
-  | 'CHAR' | 'TOKEN' | 'CALL' | 'NODE' | 'SHIFT' | 'REDUCE' | 'TABLE' | 'SCOPE' | 'SYM' | 'TYPE' | 'ERROR'
-  | 'IR' | 'CFG' | 'LIVE' | 'DOM' | 'PHI' | 'PASS' | 'ISEL' | 'REG' | 'SPILL' | 'FRAME' | 'ENCODE' | 'ELF' | 'RELOC' | 'LINK';
+  | 'NFA' | 'DFA' | 'CHAR' | 'TOKEN' | 'CALL' | 'NODE' | 'SHIFT' | 'REDUCE' | 'TABLE' | 'SCOPE' | 'SYM' | 'TYPE' | 'ERROR'
+  | 'IR' | 'CFG' | 'LIVE' | 'DOM' | 'PHI' | 'PASS' | 'ISEL' | 'REG' | 'SPILL' | 'FRAME' | 'ENCODE' | 'ELF' | 'RELOC' | 'LINK' | 'PLT' | 'GOT';
 
 
 /** 编译阶段，对应顶栏的 7 档。 */
