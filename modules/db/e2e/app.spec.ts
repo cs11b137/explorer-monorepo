@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const LESSON_IDS = ['parse', 'planner', 'indexscan', 'hashjoin', 'extsort', 'heappage', 'bufferpool', 'btreeinsert', 'vacuum', 'mvcc', 'isolation', 'locks', 'walcommit', 'recovery'];
+const LESSON_IDS = ['parse', 'planner', 'indexscan', 'hashjoin', 'extsort', 'heappage', 'bufferpool', 'btreeinsert', 'lsm', 'vacuum', 'mvcc', 'isolation', 'locks', 'walcommit', 'recovery'];
 
 function watchErrors(page: Page): string[] {
   const errors: string[] = [];
@@ -110,6 +110,13 @@ test.describe('结构板', () => {
     await page.keyboard.press('Space');
     await expect(page.locator('.board-slot[data-board="tree"] .bd-node').first()).toBeVisible();
     expect(await page.locator('.board-slot[data-board="tree"] .bd-node').count()).toBeGreaterThan(3);
+    // LSM：合并之后 L0 的 #14 和 #11、L1 的 #9 都换成了 L1 的 #15。
+    await select(page, 'lsm');
+    await expect(page.locator('.board-slot[data-board="lsm"] text', { hasText: /^#9$/ })).toHaveCount(1);
+    // 点步骤会从这一步开头播放，这里不按空格暂停，等合并播完。
+    await page.locator('.proto[data-lesson="lsm"] .step[data-step="5"] .step-btn').click();
+    await expect(page.locator('.board-slot[data-board="lsm"] text', { hasText: /^#15$/ })).toHaveCount(1, { timeout: 30_000 });
+    await expect(page.locator('.board-slot[data-board="lsm"] text', { hasText: /^#14$/ })).toHaveCount(0);
   });
 });
 
@@ -177,13 +184,13 @@ test.describe('播放控制', () => {
   test('标签页筛选', async ({ page }) => {
     await open(page);
     await page.click('.tab[data-group="storage"]');
-    await expect(page.locator('.proto:visible')).toHaveCount(4);
+    await expect(page.locator('.proto:visible')).toHaveCount(5);
     await page.click('.tab[data-group="query"]');
     await expect(page.locator('.proto:visible')).toHaveCount(5);
     await page.click('.tab[data-group="txn"]');
     await expect(page.locator('.proto:visible')).toHaveCount(5);
     await page.click('.tab[data-group="all"]');
-    await expect(page.locator('.proto:visible')).toHaveCount(14);
+    await expect(page.locator('.proto:visible')).toHaveCount(15);
   });
 });
 

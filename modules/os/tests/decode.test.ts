@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-  dirEntry, elfHeader, ESP_TYPE_GUID, ext4Inode, ext4Superblock, gptEntry, gptHeader, guidBytes, idtGate, inactiveTaskFrame,
-  interruptFrame, ioapicRte, jbd2Commit, jbd2Descriptor, jbd2Superblock, nvmeCqe, nvmeReadSqe, pfError, pipeBuffer, programHeader,
-  pteValue, pthreadMutex, ptRegs, schedAttr, swapHeader, swapPte, vaIndexes, waitStatus, wire,
+  AT, dirEntry, elfHeader, ESP_TYPE_GUID, execStrings, ext4Inode, ext4Superblock, gptEntry, gptHeader, guidBytes, idtGate, inactiveTaskFrame,
+  initialStack, interruptFrame, ioapicRte, jbd2Commit, jbd2Descriptor, jbd2Superblock, kernelSigaction, mapsLine, modeWord, nvmeCqe, nvmeReadSqe,
+  pfError, pipeBuffer, programHeader, pteValue, pthreadMutex, ptRegs, rtSigframe, schedAttr, sigset, siginfoKill, statBuf, swapHeader, swapPte,
+  ucontext, vaIndexes, waitStatus, wire,
 } from '../src/decode/structures';
 import { crc32, decode, type Byte } from '../src/decode/writer';
 
@@ -167,6 +168,128 @@ describe('启动', () => {
 
   it('wstatus：退出码在位 15:8', () => {
     expect(u32(waitStatus(3).bytes, 0)).toBe(0x300);
+  });
+});
+
+describe('execve', () => {
+  it('参数字符串区：每个字符串以 0 结尾，最后 8 字节为 0', () => {
+    const b = execStrings([['argv[0]', 'ls'], ['文件名', '/usr/bin/ls']]).bytes;
+    expect(b.length).toBe(3 + 12 + 8);
+    expect(text(b, 0, 2)).toBe('ls');
+    expect(b[2]).toBe(0);
+    expect(text(b, 3, 11)).toBe('/usr/bin/ls');
+    expect(b.slice(14)).toEqual(Array(9).fill(0));
+  });
+
+  it('初始栈：argc、argv、NULL、envp、NULL，然后是 16 字节一项的 auxv', () => {
+    const b = initialStack({ rsp: 0x1000n, argv: [0x10n, 0x20n], envp: [0x30n], auxv: [['PAGESZ', 4096], ['ENTRY', 0x6d30n], ['NULL', 0]] }).bytes;
+    expect(b.length).toBe(8 * 6 + 16 * 3);
+    expect(u64(b, 0)).toBe(2n);
+    expect(u64(b, 8)).toBe(0x10n);
+    expect(u64(b, 16)).toBe(0x20n);
+    expect(u64(b, 24)).toBe(0n);
+    expect(u64(b, 32)).toBe(0x30n);
+    expect(u64(b, 40)).toBe(0n);
+    expect([u64(b, 48), u64(b, 56)]).toEqual([6n, 4096n]);
+    expect([u64(b, 64), u64(b, 72)]).toEqual([9n, 0x6d30n]);
+    expect([u64(b, 80), u64(b, 88)]).toEqual([0n, 0n]);
+  });
+
+  it('auxv 类型号与 auxvec.h 一致', () => {
+    expect(AT).toMatchObject({ PHDR: 3, PAGESZ: 6, BASE: 7, ENTRY: 9, RANDOM: 25, EXECFN: 31, SYSINFO_EHDR: 33, MINSIGSTKSZ: 51 });
+  });
+});
+
+describe('内存映射', () => {
+  it('maps 的一行：路径从第 73 列开始', () => {
+    const line = mapsLine({ start: 0x7f3a1b9ff000n, end: 0x7f3a1c1ff000n, perms: 'r--p', offset: 0, major: 259, minor: 2, inode: 1835050, path: '/home/alice/words.txt' });
+    const shown = text(line.bytes, 0, line.length);
+    expect(shown.startsWith('7f3a1b9ff000-7f3a1c1ff000 r--p 00000000 103:02 1835050 ')).toBe(true);
+    expect(shown.indexOf('/home')).toBe(73);
+    expect(shown.endsWith('/home/alice/words.txt\n')).toBe(true);
+  });
+});
+
+describe('路径查找', () => {
+  it('目录项按 4 字节补齐，目录的 file_type 是 2', () => {
+    const dot = dirEntry(1835009, '.', 12, { fileType: 2, padded: true }).bytes;
+    expect(dot.length).toBe(12);
+    expect(u16(dot, 4)).toBe(12);
+    expect(dot[6]).toBe(1);
+    expect(dot[7]).toBe(2);
+    expect(dirEntry(1835042, 'notes.txt', 4028, { padded: true }).length).toBe(20);
+  });
+
+  it('i_mode：0o40750 是目录，属主 rwx', () => {
+    const b = modeWord('x', 0o40750).bytes;
+    expect(u16(b, 0)).toBe(0x41e8);
+  });
+
+  it('struct stat 144 字节，字段偏移与 asm/stat.h 一致', () => {
+    const b = statBuf({ major: 259, minor: 2, ino: 1835042, nlink: 1, mode: 0x81a4, uid: 1000, gid: 1001, size: 11, blocks: 8, time: 1780165693 }).bytes;
+    expect(b.length).toBe(144);
+    expect(u64(b, 0)).toBe(0x10302n);
+    expect(u64(b, 8)).toBe(1835042n);
+    expect(u64(b, 16)).toBe(1n);
+    expect(u32(b, 24)).toBe(0x81a4);
+    expect(u32(b, 28)).toBe(1000);
+    expect(u32(b, 32)).toBe(1001);
+    expect(u64(b, 48)).toBe(11n);
+    expect(u64(b, 56)).toBe(4096n);
+    expect(u64(b, 64)).toBe(8n);
+    expect(u64(b, 72)).toBe(1780165693n);
+    expect(u64(b, 88)).toBe(1780165693n);
+    expect(u64(b, 104)).toBe(1780165693n);
+  });
+});
+
+describe('信号', () => {
+  it('内核接口的 sigaction 32 字节，标志位正确', () => {
+    const b = kernelSigaction({ handler: 0x1000n, flags: 0x14000004n, restorer: 0x2000n, mask: 0n }).bytes;
+    expect(b.length).toBe(32);
+    expect(u64(b, 0)).toBe(0x1000n);
+    expect(u64(b, 8)).toBe(0x14000004n);
+    expect(u64(b, 16)).toBe(0x2000n);
+    expect(u64(b, 24)).toBe(0n);
+  });
+
+  it('信号集合：SIGUSR1 在位 9', () => {
+    const layer = sigset('pending', 1n << 9n, { number: 10, name: 'SIGUSR1', on: '有', off: '无' });
+    expect(u64(layer.bytes, 0)).toBe(0x200n);
+    expect(layer.fields.find((field) => field.name.startsWith('SIGUSR1'))).toMatchObject({ from: 1, to: 2 });
+  });
+
+  it('siginfo 128 字节，si_pid 在偏移 16', () => {
+    const b = siginfoKill(10, 1204, 1000).bytes;
+    expect(b.length).toBe(128);
+    expect(u32(b, 0)).toBe(10);
+    expect(u32(b, 8)).toBe(0);
+    expect(u32(b, 16)).toBe(1204);
+    expect(u32(b, 20)).toBe(1000);
+  });
+
+  it('rt_sigframe 440 字节，ucontext 和 sigcontext 的偏移与内核头文件一致', () => {
+    const values = { di: 5, si: 0x10n, dx: 4096, ax: 0, cx: 0x7e2n, sp: 0x7ffe0000n, ip: 0x7e0n, flags: 0x246n, fpstate: 0x7ffe1200n, mask: 0n };
+    const frame = decode(wire('x', 'mem', 'abi', ...rtSigframe({ ...values, restorer: 0xabcn, signo: 10, pid: 1204, uid: 1000 })));
+    const b = frame.bytes;
+    expect(b.length).toBe(440);
+    expect(u64(b, 0)).toBe(0xabcn);
+    expect(u64(b, 8)).toBe(7n);
+    expect(u32(b, 32)).toBe(2);
+    const sc = 48;
+    expect(u64(b, sc + 64)).toBe(5n);
+    expect(u64(b, sc + 104)).toBe(0n);
+    expect(u64(b, sc + 112)).toBe(0x7e2n);
+    expect(u64(b, sc + 120)).toBe(0x7ffe0000n);
+    expect(u64(b, sc + 128)).toBe(0x7e0n);
+    expect(u64(b, sc + 136)).toBe(0x246n);
+    expect(u16(b, sc + 144)).toBe(0x33);
+    expect(u16(b, sc + 150)).toBe(0x2b);
+    expect(u64(b, sc + 184)).toBe(0x7ffe1200n);
+    expect(u64(b, 304)).toBe(0n);
+    expect(u32(b, 312)).toBe(10);
+    expect(u32(b, 328)).toBe(1204);
+    expect(ucontext(values).reduce((sum, layer) => sum + layer.length, 0)).toBe(304);
   });
 });
 

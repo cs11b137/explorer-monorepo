@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cacheAddressLayer, concept, dramAddressLayer, floatLayer, instructionLayer, registers, segTone, wire } from '../src/decode/structures';
+import { boothLayer, cacheAddressLayer, concept, csrLayer, dramAddressLayer, floatLayer, instructionLayer, registers, segTone, wire } from '../src/decode/structures';
 import { decode, type Decoded } from '../src/decode/writer';
 import { splitAddress } from '../src/sim/cache';
 import { splitDramAddress } from '../src/sim/dram';
@@ -85,6 +85,56 @@ describe('指令解码到位级（黄金向量，来自 LLVM 汇编结果）', (
 
   it('每种字段的颜色各不相同的部分：rs1、rs2、rd 能一眼区分', () => {
     expect(new Set([segTone('rs1'), segTone('rs2'), segTone('rd')]).size).toBe(3);
+  });
+});
+
+describe('CSR 指令和 CSR 解码（RISC-V 特权规范）', () => {
+  it('csrw mtvec, x5 = 0x30529073：高 12 位是 CSR 地址', () => {
+    const frame = frameOf(instructionLayer(0x30529073, { text: 'csrw mtvec, x5' }));
+    expect(frame.bytes).toEqual([0x73, 0x90, 0x52, 0x30]);
+    expect(fieldBits(frame, 'csr')).toEqual([[31, 20]]);
+    expect(fieldValue(frame, 'csr')).toBe('mtvec（0x305）');
+    expect(fieldValue(frame, 'rs1')).toBe('x5（00101）');
+    expect(fieldValue(frame, 'funct3')).toBe('001');
+    expect(frame.fields.some((item) => item.name.startsWith('立即数'))).toBe(false);
+  });
+
+  it('unimp 写的是只读的 cycle', () => {
+    const frame = frameOf(instructionLayer(0xc0001073, { text: 'unimp' }));
+    expect(fieldValue(frame, 'csr')).toBe('cycle（0xc00）');
+    expect(frame.fields.find((item) => item.name.startsWith('csr'))?.note).toContain('只读');
+  });
+
+  it('mret 的高 12 位是 funct12，不按 M 扩展解释', () => {
+    const frame = frameOf(instructionLayer(0x30200073, { text: 'mret' }));
+    expect(fieldBits(frame, 'funct12')).toEqual([[31, 20]]);
+    expect(frame.fields.find((item) => item.name.startsWith('funct12'))?.note).toContain('mret');
+  });
+
+  it('mtvec 的 BASE 和 MODE，mcause 的 Interrupt 和 Exception Code，mstatus 的 MIE、MPIE、MPP', () => {
+    const tvec = frameOf(csrLayer('mtvec', 0x80));
+    expect(fieldBits(tvec, 'BASE')).toEqual([[31, 2]]);
+    expect(fieldBits(tvec, 'MODE')).toEqual([[1, 0]]);
+    expect(fieldValue(tvec, 'MODE')).toContain('直接模式');
+    const cause = frameOf(csrLayer('mcause', 2));
+    expect(fieldBits(cause, 'Interrupt')).toEqual([[31, 31]]);
+    expect(fieldBits(cause, 'Exception Code')).toEqual([[30, 0]]);
+    expect(fieldValue(cause, 'Exception Code')).toBe('2：非法指令');
+    const status = frameOf(csrLayer('mstatus', 0x1880));
+    expect(fieldBits(status, 'MPP')).toEqual([[12, 11]]);
+    expect(fieldValue(status, 'MPP')).toBe('11');
+    expect(fieldValue(status, 'MPIE')).toBe('1');
+    expect(fieldValue(status, 'MIE')).toBe('0');
+  });
+
+  it('Booth 积寄存器 A : Q : Q-1 共 17 位', () => {
+    const frame = frameOf(boothLayer('积', 0b11111100, 0b10111110, 1));
+    expect(frame.words[0]).toMatchObject({ width: 17, value: (0b11111100 << 9) | (0b10111110 << 1) | 1 });
+    expect(frame.bytes.length).toBe(3);
+    expect(fieldBits(frame, 'A  ')).toEqual([[16, 9]]);
+    expect(fieldBits(frame, 'Q  ')).toEqual([[8, 1]]);
+    expect(fieldBits(frame, 'Q-1')).toEqual([[0, 0]]);
+    expect(fieldValue(frame, 'A  ')).toBe('11111100 = -4');
   });
 });
 

@@ -74,7 +74,7 @@ export const fork: Lesson = {
     {
       title: '替换映像',
       desc: '子进程 execve，内核解析 ELF',
-      detail: '子进程调用 execve("/usr/bin/ls", argv, envp)。内核读取文件开头，核对 ELF 魔数，再按程序头建立映射。这一步并不把整个程序读入内存：PT_LOAD 段只是建立映射，实际的页面要等缺页时才从磁盘读入。旧的地址空间被丢弃，但 PID 和打开的文件描述符保留。',
+      detail: '子进程调用 execve("/usr/bin/ls", argv, envp)。内核读取文件开头，核对 ELF 魔数，再按程序头建立映射。这一步并不把整个程序读入内存：PT_LOAD 段只是建立映射，实际的页面要等缺页时才从磁盘读入。旧的地址空间被丢弃，但 PID 和打开的文件描述符保留。下一课 EXEC 会逐步细看。',
       facts: [['调用号', '59 = execve'], ['读取内容', '只有 ELF 头和程序头'], ['段的加载方式', '映射，按需读入'], ['保留', 'PID、未设 CLOEXEC 的 fd']],
       events: [
         pk('proc2', 'kernel', 'blue', 'execve', ['/usr/bin/ls'], [120000, 'SYSCALL', 'execve("/usr/bin/ls", argv, envp)', 'reg'],
@@ -131,6 +131,6 @@ export const fork: Lesson = {
     title: '复制，然后替换',
     desc: `两步之间，shell 能调整子进程的环境`,
     text: `fork 和 execve 分开，让 shell 能在中间重定向文件描述符、设置管道和环境变量，而不必给 execve 加一堆参数。写时复制和按需加载让这种看似浪费的做法几乎没有代价。`,
-    facts: [['写时复制', '详见 COW 一课'], ['按需加载', '详见 PAGE FAULT 一课'], ['子进程 PID', `${CHILD}（示例值）`]],
+    facts: [['写时复制', '详见 COW 一课'], ['按需加载', '详见 PAGE FAULT 一课'], ['下一课', 'EXEC']],
   },
 };

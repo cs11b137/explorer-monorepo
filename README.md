@@ -4,22 +4,22 @@
 
 线上地址：<https://wuwenjunpr.site/explorer-monorepo/>，<https://cs-explorer.pages.dev/>
 
-| 目录 | 模块 | 内容 | 地址 |
-|---|---|---|---|
-| `index.html`、`src/`、`public/` | 主站首页 | 课程入口 | `/` |
-| `modules/protocol` | Protocol Explorer | 网络协议。作者 Dilum Sanjaya 线上站的镜像，见其 `PROVENANCE.md` | `/modules/protocol/` |
-| `modules/os` | OS EXPLORER | 操作系统 | `/modules/os/` |
-| `modules/algo` | ALGO EXPLORER | 数据结构与算法 | `/modules/algo/` |
-| `modules/codegen` | CODEGEN EXPLORER | 编译原理 | `/modules/codegen/` |
-| `modules/cpu` | CPU EXPLORER | 计算机组成原理 | `/modules/cpu/` |
-| `modules/db` | DB EXPLORER | 数据库系统原理 | `/modules/db/` |
-| `modules/llm` | LLM EXPLORER | 大模型原理。课程里运行一个迷你 Transformer，接口见其 `README.md` | `/modules/llm/` |
-| `modules/context` | CONTEXT EXPLORER | 接口与上下文工程。逐字节解码 API 请求和响应，token、费用、缓存全部真实计算，接口见其 `README.md` | `/modules/context/` |
-| `modules/rag` | RAG EXPLORER | 嵌入与检索增强。嵌入、相似度、Flat / IVF / HNSW / PQ 索引、混合检索和评估全部真实计算，接口见其 `README.md` | `/modules/rag/` |
-| `modules/agent` | AGENT EXPLORER | Agent 与 MCP。Agent 循环、工具执行、MCP（2026-07-28 版）的 JSON-RPC、stdio 和 Streamable HTTP 全部真实执行，接口见其 `README.md` | `/modules/agent/` |
-| `modules/llmops` | LLMOPS EXPLORER | 安全、评估与可观测性。注入检测器（规则 + 真训练的小分类器）、PII 校验和脱敏、限流、评估统计（Wilson、kappa、McNemar、bootstrap）、W3C traceparent、OTLP/JSON 和 GenAI 语义约定属性全部真实计算，接口见其 `README.md` | `/modules/llmops/` |
-| `packages/engine` | `@explorer/engine` | 除 Protocol 外十个模块共用的引擎 | |
-| `packages/llm-core` | `@explorer/llm-core` | LLM、CONTEXT、RAG、AGENT、LLMOPS 共用的计算核心：字节级 BPE 分词器、UTF-8、语料、随机数、FNV-1a（64 / 32 位）、SHA-256 和 HMAC、浮点位模式、BM25、JSON、HTTP/1.1、SSE、ChatML 模板和 token 计数、Messages API、提示缓存、计费、示例 id、令牌桶、JSON Schema 校验、小铺的场景数据 | |
+| 目录 | 模块 | 内容 | 课数 | 地址 |
+|---|---|---|---|---|
+| `index.html`、`src/`、`public/` | 主站首页 | 课程入口 | | `/` |
+| `modules/protocol` | Protocol Explorer | 网络协议。作者 Dilum Sanjaya 线上站的镜像，见其 `PROVENANCE.md` | 14 | `/modules/protocol/` |
+| `modules/os` | OS EXPLORER | 操作系统 | 18 | `/modules/os/` |
+| `modules/algo` | ALGO EXPLORER | 数据结构与算法 | 20 | `/modules/algo/` |
+| `modules/codegen` | CODEGEN EXPLORER | 编译原理 | 16 | `/modules/codegen/` |
+| `modules/cpu` | CPU EXPLORER | 计算机组成原理 | 16 | `/modules/cpu/` |
+| `modules/db` | DB EXPLORER | 数据库系统原理 | 15 | `/modules/db/` |
+| `modules/llm` | LLM EXPLORER | 大模型原理。课程里运行一个迷你 Transformer，接口见其 `README.md` | 15 | `/modules/llm/` |
+| `modules/context` | CONTEXT EXPLORER | 接口与上下文工程。逐字节解码 API 请求和响应，token、费用、缓存全部真实计算，接口见其 `README.md` | 14 | `/modules/context/` |
+| `modules/rag` | RAG EXPLORER | 嵌入与检索增强。嵌入、相似度、Flat / IVF / HNSW / PQ 索引、混合检索和评估全部真实计算，接口见其 `README.md` | 14 | `/modules/rag/` |
+| `modules/agent` | AGENT EXPLORER | Agent 与 MCP。Agent 循环、工具执行、MCP（2026-07-28 版）的 JSON-RPC、stdio 和 Streamable HTTP 全部真实执行，接口见其 `README.md` | 13 | `/modules/agent/` |
+| `modules/llmops` | LLMOPS EXPLORER | 安全、评估与可观测性。注入检测器（规则 + 真训练的小分类器）、PII 校验和脱敏、限流、评估统计（Wilson、kappa、McNemar、bootstrap）、W3C traceparent、OTLP/JSON 和 GenAI 语义约定属性全部真实计算，接口见其 `README.md` | 13 | `/modules/llmops/` |
+| `packages/engine` | `@explorer/engine` | 除 Protocol 外十个模块共用的引擎 |  | |
+| `packages/llm-core` | `@explorer/llm-core` | LLM、CONTEXT、RAG、AGENT、LLMOPS 共用的计算核心：字节级 BPE 分词器、UTF-8、语料、随机数、FNV-1a（64 / 32 位）、SHA-256 和 HMAC、浮点位模式、BM25、JSON、HTTP/1.1、SSE、ChatML 模板和 token 计数、Messages API、提示缓存、计费、示例 id、令牌桶、JSON Schema 校验、小铺的场景数据 |  | |
 
 ## 常用命令
 

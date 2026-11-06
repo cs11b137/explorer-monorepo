@@ -1,4 +1,5 @@
 import { dataflow } from './dataflow';
+import { dynlink } from './dynlink';
 import { encoding } from './encoding';
 import { frame } from './frame';
 import { irgen } from './irgen';
@@ -10,9 +11,10 @@ import { llparser } from './llparser';
 import { lrparser } from './lrparser';
 import { optimize } from './optimize';
 import { regalloc } from './regalloc';
+import { regex } from './regex';
 import { ssa } from './ssa';
 import { typecheck } from './typecheck';
 import type { Lesson } from './types';
 
-export const LESSONS: Lesson[] = [lexer, llparser, lrparser, typecheck, irgen, dataflow, ssa, optimize, licm, isel, regalloc, frame, encoding, link];
+export const LESSONS: Lesson[] = [regex, lexer, llparser, lrparser, typecheck, irgen, dataflow, ssa, optimize, licm, isel, regalloc, frame, encoding, link, dynlink];
 export const LESSON_BY_ID: Record<string, Lesson> = Object.fromEntries(LESSONS.map((lesson) => [lesson.id, lesson]));

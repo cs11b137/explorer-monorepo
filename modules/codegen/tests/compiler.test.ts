@@ -4,12 +4,14 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { compile, LEXED, LINKED, LIVE, LR_RUN, LR_TABLE, MAIN, PARSED, SCALE_OBJ, SEMA, BAD_SEMA, SUM, TIGHT_ALLOC, TIGHT_POOL } from '../src/compiler';
+import { compile, DFA, DYN_EXE, LEXED, LIBSCALE, LINKED, LIVE, LOADED, LR_RUN, LR_TABLE, MAIN, MIN_DFA, NFA, PARSED, RESOLVED, SCALE_OBJ, SEMA, BAD_SEMA, SUM, TIGHT_ALLOC, TIGHT_POOL } from '../src/compiler';
+import { dynLink, elfHash, EXAMPLE_LOAD, gnuHash, load, lookup, resolve, sectionOf } from '../src/compiler/dynlink';
 import { dominance, liveness } from '../src/compiler/dataflow';
 import { parseObject } from '../src/compiler/elf';
 import { interpret } from '../src/compiler/interp';
 import { fmtBody, type IrFunc } from '../src/compiler/ir';
-import { lex, LexError } from '../src/compiler/lexer';
+import { classOf, DFA as LEXER_DFA, lex, LexError } from '../src/compiler/lexer';
+import { closure, fmtRe, LEXER_KINDS, matchLexer, minimize, parseRegex, runDfa, subset, symbolOf, thompson } from '../src/compiler/regex';
 import { link } from '../src/compiler/link';
 import { buildSlr, END, EXPR_GRAMMAR, fmtAction, fmtItem, makeGrammar, runLr } from '../src/compiler/lr';
 import { findLoops } from '../src/compiler/opt';
@@ -590,5 +592,140 @@ describe.skipIf(!hasClang)('现场再跑一次 clang', () => {
     writeFileSync(join(dir, 'sum.s'), MAIN.asm);
     execFileSync('clang', ['-target', 'x86_64-unknown-linux-gnu', '-c', 'sum.s', '-o', 'sum.o'], { cwd: dir });
     expect(readFileSync(join(dir, 'sum.o')).toString('hex')).toBe(hexOf(MAIN.object.bytes));
+  });
+});
+
+describe('正则到 DFA', () => {
+  // 龙书第 2 版例 3.24、3.36：(a|b)*abb 的 NFA 有 11 个状态，子集构造得到 A 到 E，最小化后 A 和 C 合并。
+  const book = thompson([{ kind: 'identifier', re: '(a|b)*abb' }]);
+  const bookDfa = subset(book);
+
+  it('解析：闭包优先级最高，其次是连接，选择最低', () => {
+    expect(fmtRe(parseRegex('L(L|D)*'))).toBe('L(L|D)*');
+    expect(parseRegex('ab|c')).toMatchObject({ k: 'alt', a: { k: 'cat' }, b: { k: 'sym', s: 'c' } });
+    expect(parseRegex('ab*')).toMatchObject({ k: 'cat', b: { k: 'star' } });
+    expect(fmtRe(parseRegex('((a|b)*)abb'))).toBe('(a|b)*abb');
+    expect(() => parseRegex('(ab')).toThrow(/缺少 \)/);
+    expect(() => parseRegex('a|')).toThrow(/需要一个符号/);
+  });
+
+  it('龙书 (a|b)*abb：11 个状态，编号和边与书上相同', () => {
+    expect(book.count).toBe(11);
+    expect([...book.accepts.keys()]).toEqual([10]);
+    const edges = book.edges.map((edge) => `${edge.from}${edge.sym ?? '-'}${edge.to}`).sort();
+    expect(edges).toEqual(['0-1', '0-7', '1-2', '1-4', '2a3', '3-6', '4b5', '5-6', '6-1', '6-7', '7a8', '8b9', '9b10'].sort());
+  });
+
+  it('龙书 (a|b)*abb：子集构造的 5 个集合和转移逐个相同', () => {
+    expect(bookDfa.states.map((state) => [state.name, state.set])).toEqual([
+      ['A', [0, 1, 2, 4, 7]], ['B', [1, 2, 3, 4, 6, 7, 8]], ['C', [1, 2, 4, 5, 6, 7]], ['D', [1, 2, 4, 5, 6, 7, 9]], ['E', [1, 2, 4, 5, 6, 7, 10]],
+    ]);
+    const table = Object.fromEntries([...bookDfa.trans].map(([name, row]) => [name, Object.fromEntries(row)]));
+    expect(table).toEqual({ A: { a: 'B', b: 'C' }, B: { a: 'B', b: 'D' }, C: { a: 'B', b: 'C' }, D: { a: 'B', b: 'E' }, E: { a: 'B', b: 'C' } });
+    expect(bookDfa.states.filter((state) => state.accept).map((state) => state.name)).toEqual(['E']);
+  });
+
+  it('龙书 (a|b)*abb：最小化后 4 个状态，A 和 C 合并', () => {
+    const min = minimize(bookDfa);
+    expect(min.groups.map((group) => group.join('')).sort()).toEqual(['AC', 'B', 'D', 'E']);
+    const symbols = (text: string) => [...text];
+    expect(runDfa(min, symbols('babb')).kind).toBe('identifier');
+    expect(runDfa(min, symbols('abab')).length).toBe(0);
+  });
+
+  it('词法规则：15 个 NFA 状态，6 个 DFA 状态，最小化成 3 个', () => {
+    expect(NFA.count).toBe(15);
+    expect(NFA.edges.length).toBe(19);
+    expect([...NFA.accepts]).toEqual([[9, 'identifier'], [14, 'numeric_constant']]);
+    expect(closure(NFA, [NFA.start])).toEqual([0, 1, 10]);
+    expect(DFA.states.map((state) => [state.name, state.accept])).toEqual([
+      ['A', null], ['B', 'identifier'], ['C', 'numeric_constant'], ['D', 'identifier'], ['E', 'identifier'], ['F', 'numeric_constant'],
+    ]);
+    expect(MIN_DFA.groups).toEqual([['A'], ['B', 'D', 'E'], ['C', 'F']]);
+    expect(MIN_DFA.rounds.length).toBe(1);
+  });
+
+  it('最小化的结果就是词法器表里的 START、ID、NUM', () => {
+    const mapping = matchLexer(MIN_DFA, LEXER_DFA, LEXER_KINDS);
+    expect(mapping && [...mapping.values()]).toEqual(['START', 'ID', 'NUM']);
+    // 换一张不同的表就对不上。
+    expect(matchLexer(MIN_DFA, { ...LEXER_DFA, NUM: { digit: 'NUM', letter: 'ID' } }, LEXER_KINDS)).toBeNull();
+  });
+
+  it('用生成的 DFA 切 sum.c 里的标识符和数字，和词法器的结果相同', () => {
+    for (const token of LEXED.tokens.filter((item) => item.kind === 'identifier' || item.kind === 'numeric_constant' || item.kind === 'int' || item.kind === 'return')) {
+      const input = [...token.text, ' '].map((char) => symbolOf(classOf(char)) ?? '?');
+      const result = runDfa(MIN_DFA, input);
+      expect(result.length, token.text).toBe(token.text.length);
+      expect(result.kind, token.text).toBe(token.kind === 'numeric_constant' ? 'numeric_constant' : 'identifier');
+    }
+  });
+});
+
+describe('动态链接对照 lld', () => {
+  const vectors = JSON.parse(vector('lld-dynlink.json')) as Record<'exe' | 'lib', { phnum: number; sections: Array<{ name: string; type: number; addr: number; size: number; hex: string }> }> & { lld: string };
+
+  it('向量来自 lld', () => expect(vectors.lld).toMatch(/^LLD \d+/));
+
+  for (const [key, image] of [['exe', DYN_EXE], ['lib', LIBSCALE]] as const) {
+    it(`${image.name}：节的顺序、类型、地址、大小和 lld 相同，程序头数量相同`, () => {
+      expect(image.sections.map((section) => [section.name, section.type, section.addr, section.size])).toEqual(vectors[key].sections.map((section) => [section.name, section.type, section.addr, section.size]));
+      expect(image.phnum).toBe(vectors[key].phnum);
+    });
+
+    it(`${image.name}：每个节的字节和 lld 逐字节相同`, () => {
+      for (const section of vectors[key].sections) expect(hexOf(sectionOf(image, section.name).bytes), section.name).toBe(section.hex);
+    });
+  }
+
+  it('手工计算：call 改指 PLT，PLT 和 GOT 的位移', () => {
+    const call = DYN_EXE.patches.find((patch) => patch.sym === 'scale')!;
+    // L = scale@plt = 0x201050，P = 0x201000 + 0x2d，L − 4 − P = 0x1f。
+    expect([call.s, call.p, call.value, call.viaPlt]).toEqual([0x201050, 0x20102d, 0x1f, true]);
+    const [push, jmp] = DYN_EXE.plt0;
+    // push [rip + x]：下一条指令 0x201046，GOT[1] 在 0x203008。
+    expect(push.bytes).toEqual([0xff, 0x35, 0xc2, 0x1f, 0, 0]);
+    expect(jmp.mem).toBe(0x203010);
+    expect(DYN_EXE.plt[0].insns.map((insn) => insn.bytes)).toEqual([[0xff, 0x25, 0xc2, 0x1f, 0, 0], [0x68, 0, 0, 0, 0], [0xe9, 0xe0, 0xff, 0xff, 0xff]]);
+    // GOT[3] 的初值是 scale@plt 的第二条指令。
+    expect(DYN_EXE.gotPlt).toEqual([0x202000, 0, 0, 0x201056]);
+  });
+
+  it('哈希函数：和 gABI、glibc 文档里的值相同', () => {
+    expect(gnuHash('')).toBe(5381);
+    expect(gnuHash('printf')).toBe(0x156b2bb8);
+    expect(elfHash('printf')).toBe(0x077905a6);
+    expect(gnuHash('scale')).toBe(0x1057f68d);
+  });
+
+  it('llvm-objdump 读 lld 的结果：call 到 scale@plt，JUMP_SLOT 回填 GOT[3]', () => {
+    const text = vector('objdump-dynlink.txt');
+    expect(text).toMatch(/callq\s+0x201050 <scale@plt>/);
+    expect(text).toMatch(/0000000000203018 R_X86_64_JUMP_SLOT\s+scale/);
+    expect(text).toMatch(/NEEDED\s+libscale\.so/);
+    expect(text).toMatch(/INTERP off\s+0x0000000000000238/);
+    expect(text).toMatch(/0000000000001000 g\s+DF \.text\s+0000000000000009 scale/);
+  });
+
+  it('延迟绑定：加载只填 GOT[1]、GOT[2]，解析时先查 a.out，再在 libscale.so 里找到', () => {
+    expect(LOADED.got).toEqual([0x202000, EXAMPLE_LOAD.linkMap, EXAMPLE_LOAD.resolver, 0x201056]);
+    expect(RESOLVED.rela).toEqual({ addr: 0x2002d0, offset: 0x203018, symIndex: 1, type: 7, addend: 0 });
+    expect(RESOLVED.name).toBe('scale');
+    const [inExe, inLib] = RESOLVED.probes;
+    expect([inExe.object, inExe.pass, inExe.bloomWord]).toEqual(['a.out', false, 0n]);
+    expect([inLib.object, inLib.pass, inLib.bloomWord, inLib.bucket, inLib.tried.map((item) => item.chain)]).toEqual(['libscale.so', true, 0x2010n, 1, [0x1057f68d]]);
+    expect(RESOLVED.address).toBe(EXAMPLE_LOAD.libBase + 0x1000);
+    // 换一个加载地址，结果跟着变。
+    const moved = { ...EXAMPLE_LOAD, libBase: 0x7f0000000000 };
+    expect(resolve(DYN_EXE, [LIBSCALE], load(DYN_EXE, moved), 0).address).toBe(0x7f0000001000);
+  });
+
+  it('找不到的符号报错；库里有多个函数时沿哈希链逐个比较', () => {
+    expect(() => dynLink('exe', { objects: [MAIN.object], libs: [], name: 'a.out' })).toThrow(/未定义的符号 scale/);
+    const two = dynLink('lib', { objects: [compile('int f(int v) {\n  return v;\n}\nint g(int v) {\n  return v + 1;\n}\n').object], libs: [], name: 'libtwo.so', soname: 'libtwo.so' });
+    expect(lookup(two, 'f').found?.name).toBe('f');
+    expect(lookup(two, 'g').found?.name).toBe('g');
+    expect(lookup(two, 'g').tried.length).toBe(2);
+    expect(lookup(two, 'h').found).toBeNull();
   });
 });

@@ -33,7 +33,7 @@ export interface Linked {
   image: number[];
 }
 
-const TYPE_NAME: Record<number, string> = { 2: 'R_X86_64_PC32', 4: 'R_X86_64_PLT32' };
+export const TYPE_NAME: Record<number, string> = { 2: 'R_X86_64_PC32', 4: 'R_X86_64_PLT32', 7: 'R_X86_64_JUMP_SLOT' };
 
 export function link(inputs: Array<ArrayLike<number> | ObjectFile>): Linked {
   const objects = inputs.map((input) => ('sections' in input ? (input as ObjectFile) : parseObject(input as ArrayLike<number>)));

@@ -5,7 +5,7 @@ import type { PanelContent } from '../scene/widgets';
 export const NODE_IDS = [
   'pc', 'imem', 'decoder', 'immgen', 'regfile', 'alu', 'control', 'dmem',
   'rega', 'regb', 'regy', 'adder', 'shifter', 'multiplier', 'flags', 'norm',
-  'sif', 'sid', 'sex', 'smem', 'swb', 'hazard', 'predictor',
+  'sif', 'sid', 'sex', 'smem', 'swb', 'hazard', 'predictor', 'csr',
   'core0', 'core1', 'cache', 'cache1', 'bus', 'memctrl', 'dram', 'bank', 'dma', 'device', 'asm',
 ] as const;
 export type NodeId = (typeof NODE_IDS)[number];

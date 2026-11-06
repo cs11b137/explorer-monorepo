@@ -92,6 +92,81 @@ static void kmp(const char *t, const char *p) { int n = strlen(t), m = strlen(p)
   printf("\nkmp.searchcmp: %ld\n", sc);
   long nc = 0; for (int s = 0; s + m <= n; s++) for (int j = 0; j < m; j++) { nc++; if (t[s+j] != p[j]) break; } printf("kmp.naivecmp: %ld\n", nc);
 }
+/* 双栈求值：push、pop、看栈顶分别计数 */
+static int NS[32], nt, OS[32], ot; static long epu, epo, epe;
+static int prec(int c) { return c == '+' || c == '-' ? 1 : c == '*' || c == '/' ? 2 : 0; }
+static void npu(int v) { NS[nt++] = v; epu++; }
+static int npo(void) { epo++; return NS[--nt]; }
+static void red(void) { int b = npo(), a = npo(); int o = OS[--ot]; epo++; npu(o == '+' ? a + b : o == '-' ? a - b : o == '*' ? a * b : a / b); }
+static int calc(const char *s) {
+  nt = ot = 0; epu = epo = epe = 0;
+  for (const char *p = s; *p;) {
+    if (*p >= '0' && *p <= '9') { int v = 0; while (*p >= '0' && *p <= '9') v = v * 10 + (*p++ - '0'); npu(v); continue; }
+    if (*p == '(') { OS[ot++] = '('; epu++; }
+    else if (*p == ')') { for (;;) { epe++; if (OS[ot-1] == '(') break; red(); } ot--; epo++; }
+    else { while (ot > 0) { epe++; if (OS[ot-1] == '(' || prec(OS[ot-1]) < prec(*p)) break; red(); } OS[ot++] = *p; epu++; }
+    p++;
+  }
+  while (ot) red();
+  return npo();
+}
+/* 二叉搜索树：指向指针的指针，比较、写入、找后继分别计数 */
+struct B { int k; struct B *l, *r; };
+static struct B *broot; static long bc, bw, bwk;
+static void bins(int k) { struct B **p = &broot; while (*p) { bc++; if (k == (*p)->k) return; p = k < (*p)->k ? &(*p)->l : &(*p)->r; } *p = calloc(1, sizeof **p); (*p)->k = k; bw++; }
+static int bfnd(int k) { int n = 0; for (struct B *x = broot; x; x = k < x->k ? x->l : x->r) { bc++; n++; if (k == x->k) return n; } return -n; }
+static void bdel(int k) {
+  struct B **p = &broot; while (*p && (*p)->k != k) { bc++; p = k < (*p)->k ? &(*p)->l : &(*p)->r; }
+  if (!*p) return; bc++; struct B *x = *p;
+  if (x->l && x->r) { struct B **s = &x->r; bwk++; while ((*s)->l) { s = &(*s)->l; bwk++; } struct B *y = *s; x->k = y->k; bw++; *s = y->r; bw++; free(y); }
+  else { *p = x->l ? x->l : x->r; bw++; free(x); }
+}
+static int bht(struct B *x) { if (!x) return 0; int a = bht(x->l), b = bht(x->r); return 1 + (a > b ? a : b); }
+static void bpre(struct B *x) { if (!x) return; printf(" %d", x->k); bpre(x->l); bpre(x->r); }
+/* DFS 拓扑排序：三色，完成时从末尾往前写 */
+static int dadj[16][16], ddeg[16], dcol[16], dord[16], dpos, dfin[16], dfn; static long drd, dwr, dscan; static int dcyc;
+static void dvis(int u) { dcol[u] = 1; dwr++; for (int i = 0; i < ddeg[u]; i++) { int v = dadj[u][i]; dscan++; drd++; if (dcol[v] == 1) dcyc = 1; else if (dcol[v] == 0) dvis(v); } dcol[u] = 2; dord[--dpos] = u; dwr += 2; dfin[dfn++] = u; }
+static void topo(int n, int m, const int (*e)[2]) {
+  memset(ddeg, 0, sizeof ddeg); memset(dcol, 0, sizeof dcol); dpos = n; dfn = 0; drd = dwr = dscan = 0; dcyc = 0;
+  for (int i = 0; i < m; i++) dadj[e[i][0]][ddeg[e[i][0]]++] = e[i][1];
+  for (int s = 0; s < n; s++) { drd++; if (!dcol[s]) dvis(s); }
+}
+/* Kruskal：qsort 按边权排序，并查集按大小合并、路径压缩 */
+struct edge { int u, v, w; };
+static int ecmp(const void *a, const void *b) { return ((const struct edge *)a)->w - ((const struct edge *)b)->w; }
+static int KP[16], KS[16]; static long kr, kw;
+static int kfnd(int x) { int r = x; kr++; while (KP[r] != r) { r = KP[r]; kr++; } while (KP[x] != r) { int n = KP[x]; KP[x] = r; kw++; x = n; } return r; }
+static int kruskal(int n, int m, struct edge *e, int *examined) {
+  qsort(e, m, sizeof *e, ecmp); for (int i = 0; i < n; i++) { KP[i] = i; KS[i] = 1; } kr = kw = 0;
+  int total = 0, taken = 0; *examined = 0;
+  for (int k = 0; k < m && taken < n - 1; k++) {
+    ++*examined; int a = kfnd(e[k].u), b = kfnd(e[k].v);
+    if (a == b) { printf(" -%d-%d", e[k].u, e[k].v); continue; }
+    if (KS[a] < KS[b]) { int t = a; a = b; b = t; } KP[b] = a; KS[a] += KS[b]; kw += 2; total += e[k].w; taken++; printf(" +%d-%d", e[k].u, e[k].v);
+  }
+  return total;
+}
+/* LSD 基数排序：每趟一次计数排序，起始位置用前缀和 */
+static void radix(int *a, int n) {
+  int b[16], mx = 0; long cnt = 0, sum = 0, put = 0, cp = 0, pass = 0;
+  for (int i = 0; i < n; i++) if (a[i] > mx) mx = a[i];
+  for (int ex = 1; mx / ex > 0; ex *= 10) {
+    int c[10] = {0}; pass++;
+    for (int i = 0; i < n; i++) { c[a[i] / ex % 10]++; cnt++; }
+    printf("radix.count%d:", ex); for (int d = 0; d < 10; d++) printf(" %d", c[d]); puts("");
+    for (int d = 0, s = 0; d < 10; d++) { int t = c[d]; c[d] = s; s += t; sum++; }
+    printf("radix.start%d:", ex); for (int d = 0; d < 10; d++) printf(" %d", c[d]); puts("");
+    for (int i = 0; i < n; i++) { b[c[a[i] / ex % 10]++] = a[i]; put++; }
+    for (int i = 0; i < n; i++) { a[i] = b[i]; cp++; }
+    printf("radix.pass%d:", ex); for (int i = 0; i < n; i++) printf(" %d", a[i]); puts("");
+  }
+  printf("radix.ops: passes %ld count %ld sum %ld put %ld copy %ld\n", pass, cnt, sum, put, cp);
+}
+/* N 皇后：回溯找第一个解，另外数出全部解 */
+static int QN, Q[16]; static long qtry, qcmp, qcall, qback, qsol;
+static int qok(int row, int col) { for (int r = 0; r < row; r++) { qcmp++; if (Q[r] == col || abs(Q[r] - col) == row - r) return 0; } return 1; }
+static int qsolve(int row) { qcall++; if (row == QN) return 1; for (int c = 0; c < QN; c++) { qtry++; if (!qok(row, c)) continue; Q[row] = c; if (qsolve(row + 1)) return 1; qback++; } return 0; }
+static void qall(int row) { if (row == QN) { qsol++; return; } for (int c = 0; c < QN; c++) if (qok(row, c)) { Q[row] = c; qall(row + 1); } }
 int main(void) {
   const char *keys[] = {"", "a", "foobar", "apple", "pear", "plum", "fig", "kiwi", "lime", "mango", "peach", "grape", "cherry", "melon", "date", 0};
   for (int i = 0; keys[i]; i++) printf("fnv %s: %08x &7=%u\n", keys[i], fnv(keys[i]), fnv(keys[i]) & 7);
@@ -113,5 +188,21 @@ int main(void) {
   printf("lcs ABCBDAB/BDCABA: %d\nlcs AGGTAB/GXTXAYB: %d\nlcs ABCBD/BDCAB: %d\n", lcs("ABCBDAB","BDCABA"), lcs("AGGTAB","GXTXAYB"), lcs("ABCBD","BDCAB"));
   nv("ABCBD", 5, "BDCAB", 5); printf("lcs.naive.calls: %ld\n", naive_calls);
   kmp("ABABDABABCABAB", "ABABC");
+  const char *ex[] = {"2*(3+4)-6/2", "8-3-2", "2*(3+(4-1))*5", "100/7/2", "1+2*3-4/2", "(((9)))", 0};
+  for (int i = 0; ex[i]; i++) { int v = calc(ex[i]); printf("calc %s: %d push %ld pop %ld peek %ld\n", ex[i], v, epu, epo, epe); }
+  int bk[] = {50,30,70,20,40,60,80,65}; for (int i = 0; i < 8; i++) bins(bk[i]);
+  printf("bst.pre:"); bpre(broot); printf("\nbst.insert.cmp: %ld height %d\n", bc, bht(broot));
+  printf("bst.find65: %d find45: %d\n", bfnd(65), bfnd(45));
+  int bd[] = {20, 30, 50}; for (int i = 0; i < 3; i++) { bdel(bd[i]); printf("bst.del%d:", bd[i]); bpre(broot); puts(""); }
+  printf("bst.cmp: %ld writes %ld walks %ld\n", bc, bw, bwk);
+  int bs[] = {20,30,40,50,60,65,70,80}; broot = 0; for (int i = 0; i < 8; i++) bins(bs[i]); printf("bst.sorted.height: %d\n", bht(broot));
+  int te[][2] = {{0,1},{0,2},{1,3},{2,3},{3,4},{2,5},{5,4},{6,2}}; topo(7, 8, te);
+  pr("topo.order", dord, 7); pr("topo.finish", dfin, 7); printf("topo.scanned: %ld reads %ld writes %ld cyclic %d\n", dscan, drd, dwr, dcyc);
+  int ce[][2] = {{0,1},{1,2},{2,0},{2,3}}; topo(4, 4, ce); printf("topo.cycle: %d\n", dcyc);
+  struct edge ke[] = {{0,1,6},{0,2,4},{1,2,7},{1,3,11},{2,3,9},{2,5,12},{3,4,1},{3,5,8},{4,5,3}}; int kex;
+  printf("kruskal:"); int kt = kruskal(6, 9, ke, &kex); printf("\nkruskal.total: %d examined %d reads %ld writes %ld\n", kt, kex, kr, kw);
+  int ra[] = {170,45,75,90,802,24,2,66}; radix(ra, 8);
+  QN = 4; qsolve(0); pr("queens4", Q, 4); printf("queens4.tries: %ld cmp %ld calls %ld back %ld\n", qtry, qcmp, qcall, qback);
+  printf("queens.count:"); for (QN = 1; QN <= 8; QN++) { qsol = 0; qall(0); printf(" %ld", qsol); } puts("");
   return 0;
 }

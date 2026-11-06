@@ -21,6 +21,12 @@ import { INPUT as MERGE_INPUT, mergeSort } from '../src/lessons/mergesort';
 import { INPUT as QUICK_INPUT, quickSort } from '../src/lessons/quicksort';
 import { CAP, ringRun } from '../src/lessons/ringqueue';
 import { SECOND_PAIRS, ufRun, FIRST_PAIRS, QUERY } from '../src/lessons/unionfind';
+import { countQueens, N as QUEENS_N, queensRun } from '../src/lessons/backtrack';
+import { Bst, bstRun, HIT, KEYS as BST_KEYS, MISS, REMOVALS } from '../src/lessons/bst';
+import { ARCS, dfsRun, N as DFS_N } from '../src/lessons/dfs';
+import { EDGES as MST_EDGES, mstRun, N as MST_N } from '../src/lessons/mst';
+import { INPUT as RADIX_INPUT, radixRun } from '../src/lessons/radixsort';
+import { calcRun, EXPR, PREC } from '../src/lessons/stack';
 import { chunkSize } from '../src/decode/structures';
 
 const factsOf = (id: string, step: number) => Object.fromEntries(LESSON_BY_ID[id].steps[step].facts);
@@ -68,6 +74,45 @@ describe('链表', () => {
     expect(listRun.foundAtTail).toBe(true);
     expect(FIND_TARGET).toBe(PUSHES[0]);
     expect(listRun.findCmp).toBe(PUSHES.length);
+  });
+});
+
+describe('栈', () => {
+  const [inParens, byMinus, ...atEnd] = calcRun.applied;
+  const peeksFor = (incoming: string) => calcRun.peeks.filter((item) => item.incoming === incoming);
+
+  it('手算结果', () => {
+    expect(factsOf('stack', 1)).toMatchObject({ 数字栈: '2 3 4', 运算符栈: '* ( +' });
+    expect(stepOf('stack', 2).desc).toBe('3 + 4 = 7，括号消失');
+    expect(stepOf('stack', 2).detail).toContain('这里弹出 4 和 3，再弹出 \'+\'，算出 7');
+    expect(factsOf('stack', 2)).toMatchObject({ 数字栈: '2 7', 运算符栈: '*' });
+    expect(factsOf('stack', 3)).toMatchObject({ 计算: '2 * 7 = 14', 数字栈: '14 6 2', 运算符栈: '- /' });
+    expect(stepOf('stack', 4).detail).toContain('6 / 2 = 3，然后 14 - 3 = 11');
+    expect(factsOf('stack', 4)).toMatchObject({ 结果: '11', 入栈: '14 次', 出栈: '14 次', 看栈顶: '5 次' });
+    expect(stepOf('stack', 0).detail).toContain('struct stack 一共 16 字节：data 指针在 +0，top 在 +8，cap 在 +12');
+  });
+
+  it('文案的说法成立', () => {
+    // 「'+' 进栈前看了一眼栈顶，是左括号，就不往下算」
+    expect(peeksFor('+')).toEqual([{ top: '(', incoming: '+', reduce: false }]);
+    // 「右括号……反复看运算符栈顶」「最后左括号出栈丢掉」
+    expect(peeksFor(')').map((item) => item.reduce)).toEqual([true, false]);
+    expect(inParens.by).toBe(')');
+    // 「'-' 进栈前看到栈顶的 '*' 优先级更高」「'/' 进栈前看到的是 '-'，优先级比自己低」
+    expect(peeksFor('-')).toEqual([{ top: '*', incoming: '-', reduce: true }]);
+    expect(byMinus.by).toBe('-');
+    expect(PREC['*']).toBeGreaterThan(PREC['-']);
+    expect(peeksFor('/')).toEqual([{ top: '-', incoming: '/', reduce: false }]);
+    // 「运算符栈里从下往上，优先级越来越高」
+    const ops = calcRun.snaps[3].ops.filter((op) => op !== '(');
+    ops.slice(1).forEach((op, index) => expect(PREC[op]).toBeGreaterThan(PREC[ops[index]]));
+    // 「读完后……从栈顶开始把剩下的运算符依次算掉」
+    expect(atEnd.map((item) => item.by)).toEqual(['结尾', '结尾']);
+    expect(atEnd.map((item) => item.op)).toEqual(['/', '-']);
+    // 「每个记号最多入栈出栈各一次」：数字和运算符各入栈一次，运算结果再入栈一次。
+    const tokens = EXPR.match(/\d+|[-+*/()]/g)!;
+    expect(calcRun.result.pushes).toBe(tokens.filter((token) => token !== ')').length + calcRun.applied.length);
+    expect(calcRun.result.value).toBe(11);
   });
 });
 
@@ -129,6 +174,60 @@ describe('二分查找', () => {
     expect(ARR).toContain(HIT_TARGET);
     expect(ARR).not.toContain(MISS_TARGET);
     expect(searchRun.miss.probes).toBe(Math.floor(Math.log2(ARR.length)) + 1);
+  });
+});
+
+describe('二叉搜索树', () => {
+  const [hit, miss] = bstRun.finds;
+  const [leaf, single, double] = bstRun.removals;
+  const built = () => {
+    const tree = new Bst();
+    BST_KEYS.forEach((key) => tree.insert(key));
+    return tree;
+  };
+
+  it('手算结果', () => {
+    expect(stepOf('bst', 0).detail).toContain('key 后面有 4 字节填充，整个节点 24 字节');
+    expect(stepOf('bst', 0).detail).toContain('8 次插入一共比较 13 次，树高 4');
+    expect(factsOf('bst', 1)).toMatchObject({ '找 65': '50 → 70 → 60 → 65', '找 45': '50 → 30 → 40 → NULL' });
+    expect(stepOf('bst', 2).desc).toBe('20 没有孩子，直接摘下');
+    expect(stepOf('bst', 2).detail).toContain('父节点 30');
+    expect(stepOf('bst', 3).desc).toBe('30 只剩一个孩子，让孩子顶上来');
+    expect(stepOf('bst', 4).desc).toBe('用后继 60 顶替 50');
+    expect(stepOf('bst', 4).detail).toContain('这里 60 的右孩子 65 接到 70 的 left 上');
+    expect(LESSON_BY_ID.bst.outro.facts).toContainEqual(['有序插入树高', '8']);
+  });
+
+  it('文案的说法成立', () => {
+    const tree = built();
+    const node = (key: number) => {
+      let at = tree.root;
+      while (at && at.key !== key) at = key < at.key ? at.left : at.right;
+      return at!;
+    };
+    expect([HIT, MISS]).toEqual([hit.key, miss.key]);
+    expect(miss.found).toBe(false);
+    // 「比较次数最多等于树高」
+    expect(hit.path.length).toBeLessThanOrEqual(bstRun.built.height);
+    // 删除的三种情况：叶子、删掉叶子后只剩右孩子、两个孩子
+    expect(REMOVALS).toEqual([leaf.key, single.key, double.key]);
+    expect([node(leaf.key).left, node(leaf.key).right]).toEqual([null, null]);
+    tree.remove(leaf.key);
+    expect(node(single.key).left).toBeNull();
+    expect(node(single.key).right).not.toBeNull();
+    // 「孩子整棵子树都比父节点小」：30 是 50 的左孩子
+    expect(single.path[single.path.length - 2]).toBeGreaterThan(single.key);
+    tree.remove(single.key);
+    const target = node(double.key);
+    expect(target.left && target.right).toBeTruthy();
+    // 「后继……没有左孩子」「进右子树后一直往左」
+    let successor = target.right!;
+    while (successor.left) successor = successor.left;
+    expect(successor.key).toBe(double.successor);
+    expect(successor.right?.key).toBe(double.relink!.target);
+    expect(double.key).toBe(BST_KEYS[0]);
+    // 「中序仍然有序」
+    expect(bstRun.inorder).toEqual([...bstRun.inorder].sort((a, b) => a - b));
   });
 });
 
@@ -225,6 +324,37 @@ describe('BFS', () => {
   });
 });
 
+describe('DFS 拓扑排序', () => {
+  const { log, result } = dfsRun;
+  const outOf = (vertex: number) => ARCS.filter(([a]) => a === vertex);
+
+  it('手算结果', () => {
+    expect(stepOf('dfs', 0).desc).toBe('dfs(0) → dfs(1) → dfs(3) → dfs(4)');
+    expect(factsOf('dfs', 1).完成顺序).toBe('4 → 3 → 1');
+    expect(factsOf('dfs', 2).跳过的边).toBe('2 → 3，5 → 4');
+    expect(factsOf('dfs', 3)).toMatchObject({ 跳过: '1, 2, 3, 4, 5', 重新出发: '6', 'order[0]': '6' });
+    expect(stepOf('dfs', 4).desc).toBe('6 0 2 5 1 3 4');
+  });
+
+  it('文案的说法成立', () => {
+    // 「到 4 才停下，因为它没有出边」「4 没有出边，最先完成」
+    expect(outOf(log.dive[log.dive.length - 1])).toEqual([]);
+    expect(result.finished[0]).toBe(log.dive[log.dive.length - 1]);
+    // 「回到 0 之后看下一条出边」
+    expect(outOf(log.dive[0]).length).toBeGreaterThan(1);
+    // 「6 没有入边」「它的出边指向黑色顶点，马上完成」
+    const restart = log.restart[0];
+    expect(ARCS.some(([, b]) => b === restart)).toBe(false);
+    expect(outOf(restart).every(([, b]) => result.finished.indexOf(b) < result.finished.indexOf(restart))).toBe(true);
+    expect(log.restart).toEqual([restart]);
+    // 「每条边都从前面的顶点指向后面的」「扫描次数正好等于边数」「没有环」
+    expect(ARCS.every(([a, b]) => result.order.indexOf(a) < result.order.indexOf(b))).toBe(true);
+    expect(result.scanned).toBe(ARCS.length);
+    expect(result.cyclic).toBe(false);
+    expect(result.order.length).toBe(DFS_N);
+  });
+});
+
 describe('Dijkstra', () => {
   it('手算结果', () => {
     expect(stepOf('dijkstra', 1).desc).toContain('3 个邻居');
@@ -245,6 +375,38 @@ describe('Dijkstra', () => {
     expect(dijkstraRun.result.relaxations).toBe(WEIGHTED.length * 2);
     expect(dijkstraRun.result.dist.length).toBe(DIJKSTRA_N);
     expect(dijkstraRun.result.stale).toBeGreaterThan(0);
+  });
+});
+
+describe('最小生成树', () => {
+  const taken = mstRun.logs.filter((log) => log.take);
+  const rejected = mstRun.logs.filter((log) => !log.take);
+
+  it('手算结果', () => {
+    expect(factsOf('mst', 0).排序后).toBe('1 3 4 6 7 8 9 11 12');
+    expect(stepOf('mst', 1).desc).toBe('3-4、4-5');
+    expect(stepOf('mst', 1).detail).toContain('4 的根是 3，5 的根是 5，合并后 3 个顶点连成一组');
+    expect(stepOf('mst', 2).desc).toBe('0-2、0-1');
+    expect(stepOf('mst', 2).detail).toContain('一组的根是 0，另一组的根是 3');
+    expect(stepOf('mst', 3).desc).toBe('1-2、3-5 两端已经连通');
+    expect(stepOf('mst', 4).desc).toBe('总权 23');
+    expect(stepOf('mst', 4).detail).toContain('1-3 和 2-5 根本没被检查');
+  });
+
+  it('文案的说法成立', () => {
+    // 排序结果唯一，事件顺序和文案才不依赖排序算法。
+    expect(new Set(MST_EDGES.map(([, , w]) => w)).size).toBe(MST_EDGES.length);
+    // 「最轻的边两端各自是根」
+    expect([taken[0].ru, taken[0].rv]).toEqual([taken[0].edge[0], taken[0].edge[1]]);
+    // 前 4 条收下的边分成两组，第 5 条把它们连起来。
+    expect(mstRun.logs.slice(0, 4).every((log) => log.take)).toBe(true);
+    expect(rejected.length).toBe(2);
+    expect(rejected.every((log) => log.ru === log.rv)).toBe(true);
+    expect(taken[4].ru).not.toBe(taken[4].rv);
+    expect(taken[4].merged).toBe(MST_N);
+    // 「正好 V - 1 条边，循环提前结束」
+    expect(mstRun.result.tree.length).toBe(MST_N - 1);
+    expect(mstRun.result.examined).toBeLessThan(MST_EDGES.length);
   });
 });
 
@@ -289,6 +451,35 @@ describe('归并排序', () => {
   });
 });
 
+describe('基数排序', () => {
+  const [ones, tens, hundreds] = radixRun.logs;
+
+  it('手算结果', () => {
+    expect(factsOf('radixsort', 0).计数).toBe('2 0 2 0 1 2 1 0 0 0');
+    expect(factsOf('radixsort', 1)).toMatchObject({ 起始位置: '0 2 2 4 4 5 7 8 8 8', '第 1 趟后': '170 90 802 2 24 45 75 66' });
+    expect(stepOf('radixsort', 2).detail).toContain('170 和 75 的十位相同');
+    expect(factsOf('radixsort', 2)['第 2 趟后']).toBe('802 2 24 45 66 170 75 90');
+    expect(stepOf('radixsort', 3).desc).toBe('6 个数的百位是 0');
+    expect(stepOf('radixsort', 3).detail).toContain('只有 170 和 802 的百位不是 0');
+    expect(factsOf('radixsort', 4).每趟).toBe('8 + 10 + 8 + 8 = 34');
+  });
+
+  it('文案的说法成立', () => {
+    // 动画用值当身份，所以值不能重复。
+    expect(new Set(RADIX_INPUT).size).toBe(RADIX_INPUT.length);
+    // 「170 和 75 的十位相同，先后沿用上一趟按个位排好的顺序」
+    expect(ones.after.indexOf(170)).toBeLessThan(ones.after.indexOf(75));
+    expect(tens.after.indexOf(170)).toBeLessThan(tens.after.indexOf(75));
+    // 「末两位已经有序」
+    const lastTwo = tens.after.map((value) => value % 100);
+    expect(lastTwo).toEqual([...lastTwo].sort((a, b) => a - b));
+    // 「最大值是三位数，所以三趟就够了」「全程没有比较」
+    expect(String(Math.max(...RADIX_INPUT)).length).toBe(radixRun.result.passes);
+    expect(hundreds.after).toEqual([...RADIX_INPUT].sort((a, b) => a - b));
+    expect(radixRun.result.cmp).toBe(0);
+  });
+});
+
 describe('LCS', () => {
   it('手算结果', () => {
     expect(factsOf('lcs', 0).答案位置).toBe('dp[5][5]');
@@ -303,6 +494,43 @@ describe('LCS', () => {
     expect(Y).toContain(X[0]);
     expect(lcsRun.dp[1].indexOf(1)).toBe(Y.indexOf(X[0]) + 1);
     expect(lcsRun.text.length).toBe(lcsRun.length);
+  });
+});
+
+describe('回溯', () => {
+  const { attempts, rets, result } = queensRun;
+  const inPhase = (phase: number) => attempts.filter((item) => item.phase === phase);
+
+  it('手算结果', () => {
+    expect(stepOf('backtrack', 0).desc).toBe('(0, 0)、(1, 2) 先放下');
+    expect(stepOf('backtrack', 1).desc).toBe('第 2 行 4 个位置全部冲突');
+    expect(stepOf('backtrack', 2).detail).toContain('第 1 行换到 (1, 3)');
+    expect(stepOf('backtrack', 3).desc).toBe('第 0 行改放 (0, 1)');
+    expect(stepOf('backtrack', 4).desc).toBe('一共试了 26 个位置');
+    expect(stepOf('backtrack', 4).detail).toContain('每行随便放一个要试 256 种摆法，每列只用一次也有 24 种');
+    expect(LESSON_BY_ID.backtrack.overview.facts).toContainEqual(['4 皇后的解', '2 个']);
+  });
+
+  it('文案的说法成立', () => {
+    // 「第 2 行的 4 个格子都被上面的皇后攻击」
+    expect(inPhase(1).length).toBe(QUEENS_N);
+    expect(inPhase(1).every((item) => item.conflict !== null)).toBe(true);
+    // 「这次多走了一行，最后还是没有位置」
+    expect(inPhase(2).some((item) => item.row === 3)).toBe(true);
+    // 「第 0 行放在第 0 列根本没有解」：把后面几行的摆法全部枚举一遍。
+    const valid = (q: number[]) => q.every((a, i) => q.every((b, j) => i === j || (a !== b && Math.abs(a - b) !== Math.abs(i - j))));
+    let withZero = 0;
+    for (let code = 0; code < QUEENS_N ** (QUEENS_N - 1); code++) {
+      const rest = Array.from({ length: QUEENS_N - 1 }, (_, k) => Math.floor(code / QUEENS_N ** k) % QUEENS_N);
+      if (valid([0, ...rest])) withZero++;
+    }
+    expect(withZero).toBe(0);
+    expect(countQueens(QUEENS_N).solutions).toBe(2);
+    expect(rets.filter((item) => item.phase === 2 && !item.ok).map((item) => item.row)).toContain(1);
+    expect(result.solution![0]).not.toBe(0);
+    // 「接下来每一行都很快找到了位置」：这一步没有回溯。
+    expect(rets.filter((item) => item.phase === 3 && !item.ok)).toEqual([]);
+    expect(rets.filter((item) => item.ok).length).toBe(QUEENS_N + 1);
   });
 });
 

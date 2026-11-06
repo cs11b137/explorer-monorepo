@@ -358,6 +358,65 @@ export function waitStatus(code: number): LayerWriter {
   return layer;
 }
 
+// ---------- execve ----------
+
+/** execve 拷到新栈最顶端的字符串，地址从低到高。每个字符串以 0 结尾，最后 8 字节留空。 */
+export function execStrings(strings: Array<[label: string, text: string, note?: string]>): LayerWriter {
+  const total = strings.reduce((sum, [, text]) => sum + text.length + 1, 0) + 8;
+  const layer = makeLayer(`参数字符串区 · ${total} 字节`, 'amber', '新栈的最顶端，地址从低到高');
+  for (const [label, text, note] of strings) layer.field(label, `"${text}"`, () => layer.ascii(text).u8(0), { note, mono: true });
+  layer.field('栈顶 8 字节', 'NULL', () => layer.u64(0), { note: 'bprm->p 从栈顶减 8 开始往下拷，这 8 字节始终是 0。' });
+  return layer;
+}
+
+/** 辅助向量的类型号，来自 include/uapi/linux/auxvec.h 和 arch/x86/include/uapi/asm/auxvec.h。 */
+export const AT = {
+  NULL: 0, PHDR: 3, PHENT: 4, PHNUM: 5, PAGESZ: 6, BASE: 7, FLAGS: 8, ENTRY: 9, UID: 11, EUID: 12, GID: 13, EGID: 14,
+  PLATFORM: 15, HWCAP: 16, CLKTCK: 17, SECURE: 23, RANDOM: 25, HWCAP2: 26, RSEQ_FEATURE_SIZE: 27, RSEQ_ALIGN: 28,
+  EXECFN: 31, SYSINFO_EHDR: 33, MINSIGSTKSZ: 51,
+} as const;
+
+export type AuxEntry = [type: keyof typeof AT, value: bigint | number, note?: string, options?: FieldOptions];
+
+/** 新程序的初始栈，从 rsp 往高地址：argc、argv、envp、auxv。布局由 System V x86-64 ABI 规定。 */
+export function initialStack(values: { rsp: bigint; argv: bigint[]; envp: bigint[]; auxv: AuxEntry[] }): LayerWriter {
+  const total = 8 * (1 + values.argv.length + 1 + values.envp.length + 1) + 16 * values.auxv.length;
+  const layer = makeLayer(`初始栈 · ${total} 字节`, 'violet', `从 rsp = ${hex(values.rsp)} 往高地址`);
+  layer.field('argc', values.argv.length, () => layer.u64(values.argv.length), { note: 'rsp 指向这里。' });
+  values.argv.forEach((pointer, index) => layer.field(`argv[${index}]`, hex(pointer), () => layer.u64(pointer), { note: '指向栈顶的参数字符串。', example: true }));
+  layer.field('argv 结尾', 'NULL', () => layer.u64(0));
+  values.envp.forEach((pointer, index) => layer.field(`envp[${index}]`, hex(pointer), () => layer.u64(pointer), { note: index === 0 ? '这里只列两个环境变量，实际通常有几十个。' : undefined, example: true }));
+  layer.field('envp 结尾', 'NULL', () => layer.u64(0));
+  for (const [type, value, note, options] of values.auxv) {
+    const shown = typeof value === 'bigint' ? hex(value) : String(value);
+    layer.field(`AT_${type}（${AT[type]}）`, shown, () => layer.u64(AT[type]).u64(value), { note, ...options });
+  }
+  return layer;
+}
+
+// ---------- 内存映射 ----------
+
+/** /proc/<pid>/maps 的一行，格式见 fs/proc/task_mmu.c 的 show_map_vma。 */
+export function mapsLine(values: { start: bigint; end: bigint; perms: string; offset: number; major: number; minor: number; inode: number; path: string }): LayerWriter {
+  const range = `${values.start.toString(16)}-${values.end.toString(16)}`;
+  const parts: Array<[name: string, text: string, shown: string, note?: string]> = [
+    ['起止地址', range, range, '左闭右开，按页对齐。'],
+    ['权限', ` ${values.perms}`, values.perms, '最后一位 p 表示私有映射，s 表示共享映射。'],
+    ['文件偏移', ` ${values.offset.toString(16).padStart(8, '0')}`, hex(values.offset), '对应 VMA 的 vm_pgoff 乘以 4096。'],
+    ['设备', ` ${values.major.toString(16).padStart(2, '0')}:${values.minor.toString(16).padStart(2, '0')}`, `${values.major}:${values.minor}`, '主次设备号按十六进制打印，259 打印成 103。'],
+    ['inode', ` ${values.inode} `, values.inode.toLocaleString('en-US')],
+  ];
+  const prefix = parts.reduce((sum, [, text]) => sum + text.length, 0);
+  const pad = Math.max(0, 72 - prefix) + 1;
+  const length = prefix + pad + values.path.length + 1;
+  const layer = makeLayer(`maps 的一行 · ${length} 字节`, 'teal', 'ASCII 文本');
+  for (const [name, text, shown, note] of parts) layer.field(name, shown, () => layer.ascii(text), { note, example: name !== '权限' && name !== '设备' });
+  layer.field('对齐空格', `${pad} 个`, () => layer.ascii(' '.repeat(pad)), { note: '前面的部分补齐到 72 列，再加一个空格。' });
+  layer.field('路径', values.path, () => layer.ascii(values.path), { mono: true });
+  layer.field('换行', '\\n', () => layer.u8(0x0a));
+  return layer;
+}
+
 // ---------- 交换 ----------
 
 /** 被换出页面的 PTE：P=0，其余位存放 swap 位置。offset 取反存放（缓解 L1TF）。 */
@@ -388,13 +447,58 @@ export function swapHeader(lastPage: number): LayerWriter {
 
 // ---------- ext4 ----------
 
-export function dirEntry(inode: number, name: string, recLen: number): LayerWriter {
-  const layer = makeLayer(`ext4_dir_entry_2 · ${8 + name.length} 字节`, 'green', `目录项：${name}`);
+const FILE_TYPE: Record<number, string> = { 1: '1：普通文件', 2: '2：目录' };
+
+/** ext4 目录项。padded 时按 4 字节补齐，和它在目录块里实际占的位置一致。 */
+export function dirEntry(inode: number, name: string, recLen: number, options: { fileType?: 1 | 2; padded?: boolean; recNote?: string; color?: Color } = {}): LayerWriter {
+  const { fileType = 1, padded = false, recNote = '到下一个目录项的距离。', color = 'green' } = options;
+  const size = padded ? (8 + name.length + 3) & ~3 : 8 + name.length;
+  const layer = makeLayer(`ext4_dir_entry_2 · ${size} 字节`, color, `目录项：${name}`);
   layer.field('inode', inode.toLocaleString('en-US'), () => layer.u32(inode), { note: '目录项只存名字和 inode 号。文件的其他信息都在 inode 里。', example: true });
-  layer.field('rec_len', `${recLen} 字节`, () => layer.u16(recLen), { note: '到下一个目录项的距离。' });
+  layer.field('rec_len', `${recLen} 字节`, () => layer.u16(recLen), { note: recNote });
   layer.field('name_len', name.length, () => layer.u8(name.length));
-  layer.field('file_type', '1：普通文件', () => layer.u8(1));
+  layer.field('file_type', FILE_TYPE[fileType], () => layer.u8(fileType));
   layer.field('name', `"${name}"`, () => layer.ascii(name), { mono: true });
+  if (size > layer.length) layer.field('填充', `${size - layer.length} 字节`, () => layer.padTo(size), { note: '目录项按 4 字节对齐。' });
+  return layer;
+}
+
+const offsetTag = (offset: number) => `@0x${offset.toString(16).toUpperCase().padStart(2, '0')}`;
+const rwx = (bits: number) => `${bits & 4 ? 'r' : '-'}${bits & 2 ? 'w' : '-'}${bits & 1 ? 'x' : '-'}`;
+const MODE_TYPE: Record<number, string> = { 4: '4：目录', 8: '8：普通文件' };
+
+/** inode 的 i_mode，16 位：高 4 位是文件类型，低 12 位是权限。位定义见 include/uapi/linux/stat.h。 */
+export function modeWord(name: string, mode: number, notes: { owner?: string; group?: string; other?: string } = {}, summary = ''): LayerWriter {
+  const layer = makeLayer(`${name} · 2 字节`, 'amber', summary);
+  layer.field('i_mode', `${hex(mode)}（八进制 ${mode.toString(8)}）`, () => layer.u16(mode), { note: '小端存放。下面逐段拆开。' });
+  layer.over('类型 · 位 15:12', MODE_TYPE[mode >> 12] ?? String(mode >> 12), 1, 2);
+  layer.over('特殊位 · 位 11:9', (mode >> 9) & 7 ? String((mode >> 9) & 7) : '0：无 setuid、setgid、sticky', 1, 2);
+  layer.over('属主 · 位 8:6', rwx((mode >> 6) & 7), 0, 2, { note: notes.owner });
+  layer.over('同组 · 位 5:3', rwx((mode >> 3) & 7), 0, 1, { note: notes.group });
+  layer.over('其他人 · 位 2:0', rwx(mode & 7), 0, 1, { note: notes.other });
+  return layer;
+}
+
+/** x86-64 的 struct stat，144 字节，布局见 arch/x86/include/uapi/asm/stat.h。 */
+export function statBuf(values: { major: number; minor: number; ino: number; nlink: number; mode: number; uid: number; gid: number; size: number; blocks: number; time: number }): LayerWriter {
+  const dev = (values.minor & 0xff) | (values.major << 8) | ((values.minor & ~0xff) << 12);
+  const layer = makeLayer('struct stat · 144 字节', 'green', 'x86-64 布局');
+  layer.field('st_dev @0x00', `${hex(dev)}（${values.major}:${values.minor}）`, () => layer.u64(dev), { note: '主设备号在位 19:8，次设备号的低 8 位在位 7:0。259 是 NVMe 分区的主设备号。', example: true });
+  layer.field('st_ino @0x08', values.ino.toLocaleString('en-US'), () => layer.u64(values.ino), { note: '和目录项里的 inode 号相同。', example: true });
+  layer.field('st_nlink @0x10', values.nlink, () => layer.u64(values.nlink), { note: 'x86-64 上 st_nlink 是 8 字节，排在 st_mode 前面，和 32 位布局不同。' });
+  layer.field('st_mode @0x18', `${hex(values.mode)}（${MODE_TYPE[values.mode >> 12]?.slice(2) ?? '其他'}，权限 ${(values.mode & 0o777).toString(8)}）`, () => layer.u32(values.mode), { note: 'test -f 只看高 4 位是不是普通文件。' });
+  layer.field('st_uid @0x1C', values.uid, () => layer.u32(values.uid), { example: true });
+  layer.field('st_gid @0x20', values.gid, () => layer.u32(values.gid), { example: true });
+  layer.field('__pad0 @0x24', '0', () => layer.u32(0));
+  layer.field('st_rdev @0x28', '0', () => layer.u64(0), { note: '只有设备文件才用。' });
+  layer.field('st_size @0x30', `${values.size} 字节`, () => layer.u64(values.size));
+  layer.field('st_blksize @0x38', '4096', () => layer.u64(4096), { note: '推荐的 I/O 大小。' });
+  layer.field('st_blocks @0x40', `${values.blocks}（以 512 字节计）`, () => layer.u64(values.blocks));
+  for (const [name, at] of [['st_atime', 0x48], ['st_mtime', 0x58], ['st_ctime', 0x68]] as const) {
+    layer.field(`${name} ${offsetTag(at)}`, String(values.time), () => layer.u64(values.time), { note: name === 'st_atime' ? '秒数。stat 只读元数据，不会更新访问时间。' : undefined, example: true });
+    layer.field(`${name}_nsec ${offsetTag(at + 8)}`, '纳秒部分', () => layer.unknown(8), { hidden: true });
+  }
+  layer.field('__unused @0x78', '24 字节', () => layer.zero(24));
   return layer;
 }
 
@@ -552,4 +656,98 @@ export function userBytes(name: string, text: string, color: Color = 'green'): L
   const layer = makeLayer(`${name} · ${text.length} 字节`, color, '普通用户内存');
   layer.field('内容', JSON.stringify(text), () => layer.ascii(text), { mono: true });
   return layer;
+}
+
+// ---------- 信号 ----------
+
+/** rt_sigaction 的内核接口结构（x86-64），32 字节。glibc 把用户态的 struct sigaction 转成这个布局。 */
+export function kernelSigaction(values: { handler: bigint; flags: bigint; restorer: bigint; mask: bigint }): LayerWriter {
+  const flag = (index: bigint) => bit(values.flags, index);
+  const layer = makeLayer('struct sigaction · 32 字节', 'blue', '内核接口的布局');
+  layer.field('sa_handler', hex(values.handler), () => layer.u64(values.handler), { note: '处理函数的地址。', example: true });
+  layer.field('sa_flags', hex(values.flags), () => layer.u64(values.flags));
+  layer.over('SA_SIGINFO · 位 2', yesNo(flag(2n), '处理函数收到 siginfo 和 ucontext', '只收到信号编号'), 8, 9);
+  layer.over('SA_RESTORER · 位 26', yesNo(flag(26n), 'sa_restorer 有效', '无'), 11, 12, { note: 'glibc 自动加上，用户不用写。' });
+  layer.over('SA_RESTART · 位 28', yesNo(flag(28n), '被打断的系统调用自动重来', '被打断的系统调用返回 EINTR'), 11, 12);
+  layer.field('sa_restorer', hex(values.restorer), () => layer.u64(values.restorer), { note: 'glibc 的 __restore_rt。处理函数返回时跳到这里。', example: true });
+  layer.field('sa_mask', hex(values.mask), () => layer.u64(values.mask), { note: '处理期间额外屏蔽的信号。正在处理的信号本身默认也会被屏蔽。' });
+  return layer;
+}
+
+/** 信号集合，64 位：信号 n 在位 n-1。 */
+export function sigset(name: string, value: bigint, sig: { number: number; name: string; on: string; off: string }, note?: string, color: Color = 'amber'): LayerWriter {
+  const index = sig.number - 1;
+  const layer = makeLayer(`${name} · 8 字节`, color, '信号 n 占位 n-1');
+  layer.field(name, hex(value, 16), () => layer.u64(value), { note });
+  layer.over(`${sig.name} · 位 ${index}`, yesNo(bit(value, BigInt(index)), sig.on, sig.off), index >> 3, (index >> 3) + 1);
+  return layer;
+}
+
+export interface SigcontextValues {
+  di: bigint | number;
+  si: bigint | number;
+  dx: bigint | number;
+  ax: bigint | number;
+  cx: bigint;
+  sp: bigint;
+  ip: bigint;
+  flags: bigint;
+  fpstate: bigint;
+  mask: bigint;
+}
+
+export type SigcontextNotes = { ax?: string; ip?: string; mask?: string };
+
+/** struct ucontext（asm-generic/ucontext.h），304 字节，拆成三层：头、sigcontext、uc_sigmask。 */
+export function ucontext(values: SigcontextValues, notes: SigcontextNotes = {}): LayerWriter[] {
+  const head = makeLayer('ucontext 头 · 40 字节', 'violet', 'uc_flags、uc_link、uc_stack');
+  head.field('uc_flags', '0x7', () => head.u64(7), { note: 'UC_FP_XSTATE | UC_SIGCONTEXT_SS | UC_STRICT_RESTORE_SS：FPU 状态按 XSAVE 格式保存，ss 也已保存。' });
+  head.field('uc_link', 'NULL', () => head.u64(0));
+  head.field('uc_stack.ss_sp', 'NULL', () => head.u64(0), { note: '没有用 sigaltstack 设置备用信号栈。' });
+  head.field('uc_stack.ss_flags', '2：SS_DISABLE', () => head.u32(2).zero(4), { note: '4 字节，后面补 4 字节对齐。' });
+  head.field('uc_stack.ss_size', '0', () => head.u64(0));
+
+  const sc = makeLayer('sigcontext · 256 字节', 'violet', 'uc_mcontext，被打断时的寄存器');
+  sc.field('r8–r15', '被打断时的值', () => sc.unknown(64), { hidden: true });
+  sc.field('di', hex(values.di), () => sc.u64(values.di));
+  sc.field('si', hex(values.si), () => sc.u64(values.si), { example: true });
+  sc.field('bp、bx', '被打断时的值', () => sc.unknown(16), { hidden: true });
+  sc.field('dx', hex(values.dx), () => sc.u64(values.dx));
+  sc.field('ax', hex(values.ax), () => sc.u64(values.ax), { note: notes.ax });
+  sc.field('cx', hex(values.cx), () => sc.u64(values.cx), { note: 'syscall 指令把返回地址存在 rcx。', example: true });
+  sc.field('sp', hex(values.sp), () => sc.u64(values.sp), { note: '被打断时的用户栈指针。', example: true });
+  sc.field('ip', hex(values.ip), () => sc.u64(values.ip), { note: notes.ip, example: true });
+  sc.field('flags', hex(values.flags), () => sc.u64(values.flags), { example: true });
+  sc.field('cs', '0x33', () => sc.u16(0x33));
+  sc.field('gs、fs', '0', () => sc.u16(0).u16(0), { note: '64 位下不保存这两个段寄存器，FS 基址另有保存。' });
+  sc.field('ss', '0x2b', () => sc.u16(0x2b));
+  sc.field('err、trapno', '上一次异常留下的值', () => sc.unknown(16), { hidden: true });
+  sc.field('oldmask', hex(values.mask), () => sc.u64(values.mask), { note: '旧的屏蔽字，和 uc_sigmask 相同。' });
+  sc.field('cr2', '上一次缺页的地址', () => sc.unknown(8), { hidden: true });
+  sc.field('fpstate', hex(values.fpstate), () => sc.u64(values.fpstate), { note: '指向信号帧上方的 XSAVE 区，FPU 和向量寄存器存在那里。', example: true });
+  sc.field('reserved1', '64 字节', () => sc.zero(64));
+
+  const mask = makeLayer('uc_sigmask · 8 字节', 'violet', '进入处理函数前的屏蔽字');
+  mask.field('uc_sigmask', hex(values.mask, 16), () => mask.u64(values.mask), { note: notes.mask });
+  return [head, sc, mask];
+}
+
+/** kill 产生的 siginfo，128 字节。kill 用 _kill 这一组字段：发送者的 PID 和 UID。 */
+export function siginfoKill(signo: number, pid: number, uid: number): LayerWriter {
+  const layer = makeLayer('siginfo · 128 字节', 'teal', 'SI_USER：由 kill 发送');
+  layer.field('si_signo', signo, () => layer.u32(signo));
+  layer.field('si_errno', '0', () => layer.u32(0));
+  layer.field('si_code', '0：SI_USER', () => layer.u32(0), { note: '不大于 0 表示来自用户进程。正数表示由内核产生，比如缺页引起的 SIGSEGV。' });
+  layer.field('填充', '4 字节', () => layer.zero(4), { note: '后面的联合体按 8 字节对齐。' });
+  layer.field('si_pid', pid, () => layer.u32(pid), { note: '发送者的 PID。', example: true });
+  layer.field('si_uid', uid, () => layer.u32(uid), { note: '发送者的真实 UID。', example: true });
+  layer.field('联合体其余部分', '0', () => layer.padTo(128));
+  return layer;
+}
+
+/** 64 位进程的 rt_sigframe（arch/x86/include/asm/sigframe.h）：返回地址、ucontext、siginfo，共 440 字节。 */
+export function rtSigframe(values: SigcontextValues & { restorer: bigint; signo: number; pid: number; uid: number }, notes: SigcontextNotes = {}): LayerWriter[] {
+  const ret = makeLayer('pretcode · 8 字节', 'green', '信号帧的第一项');
+  ret.field('pretcode', hex(values.restorer), () => ret.u64(values.restorer), { note: '取自 sa_restorer。处理函数执行 ret 时跳到这里。', example: true });
+  return [ret, ...ucontext(values, notes), siginfoKill(values.signo, values.pid, values.uid)];
 }

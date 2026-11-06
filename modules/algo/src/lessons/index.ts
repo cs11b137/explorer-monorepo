@@ -1,6 +1,9 @@
 import { avl } from './avl';
+import { backtrack } from './backtrack';
 import { binarysearch } from './binarysearch';
+import { bst } from './bst';
 import { bfsLesson } from './bfs';
+import { dfsLesson } from './dfs';
 import { dijkstraLesson } from './dijkstra';
 import { dynarray } from './dynarray';
 import { hashtable } from './hashtable';
@@ -9,10 +12,13 @@ import { kmp } from './kmp';
 import { lcsLesson } from './lcs';
 import { linkedlist } from './linkedlist';
 import { mergesort } from './mergesort';
+import { mst } from './mst';
 import { quicksort } from './quicksort';
+import { radixsort } from './radixsort';
 import { ringqueue } from './ringqueue';
+import { stack } from './stack';
 import type { Lesson } from './types';
 import { unionfind } from './unionfind';
 
-export const LESSONS: Lesson[] = [dynarray, linkedlist, ringqueue, hashtable, binarysearch, heap, avl, unionfind, bfsLesson, dijkstraLesson, quicksort, mergesort, lcsLesson, kmp];
+export const LESSONS: Lesson[] = [dynarray, linkedlist, stack, ringqueue, hashtable, binarysearch, bst, heap, avl, unionfind, bfsLesson, dfsLesson, dijkstraLesson, mst, quicksort, mergesort, radixsort, lcsLesson, backtrack, kmp];
 export const LESSON_BY_ID: Record<string, Lesson> = Object.fromEntries(LESSONS.map((lesson) => [lesson.id, lesson]));

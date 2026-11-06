@@ -222,6 +222,50 @@ function linker(): string {
   return art;
 }
 
+/** 自动机：顶面是几个圆圈状态和连线。dashed 为真时连线画成虚线，表示空转移。 */
+function automaton(dashed: boolean, accent: string): string {
+  const p = projector(0, 0);
+  let art = shadow(p, -40, -36, 80, 72, 14);
+  art += box(p, -40, -36, 0, 80, 72, 6, { width: 1.8 });
+  const top = facesOf(p, -40, -36, 0, 80, 72, 6).top;
+  const spots: Array<[number, number]> = dashed ? [[10, 36], [28, 18], [28, 54], [48, 18], [48, 54], [68, 36]] : [[12, 36], [40, 18], [40, 54], [68, 36]];
+  const links: Array<[number, number]> = dashed ? [[0, 1], [0, 2], [1, 3], [2, 4], [3, 5], [4, 5]] : [[0, 1], [0, 2], [1, 3], [2, 3]];
+  for (const [a, b] of links) {
+    const dash = dashed && (a === 0 || b === 5) ? ' stroke-dasharray="3 2"' : '';
+    art += polyline([top(...spots[a]), top(...spots[b])], `stroke="${STROKE}" stroke-width="1.5"${dash}`);
+  }
+  spots.forEach(([u, v], index) => {
+    const ring = (radius: number) => Array.from({ length: 16 }, (_, i) => top(u + radius * Math.cos((i / 16) * Math.PI * 2), v + radius * Math.sin((i / 16) * Math.PI * 2)));
+    const last = index === spots.length - 1;
+    art += polygon(ring(6), `fill="${last ? accent : 'var(--art-paper)'}" stroke="${STROKE}" stroke-width="1"`);
+    if (last) art += polygon(ring(3.6), `fill="none" stroke="${STROKE}" stroke-width="0.8"`);
+  });
+  return art;
+}
+
+/** GOT：一排地址槽，亮的一格是函数的槽。 */
+function gotRack(): string {
+  const p = projector(0, 4);
+  let art = shadow(p, -30, -40, 60, 80, 14);
+  art += box(p, -30, -40, 0, 60, 80, 6, { width: 1.8 });
+  const top = facesOf(p, -30, -40, 0, 60, 80, 6).top;
+  for (let row = 0; row < 4; row++) {
+    const lit = row === 3;
+    art += quad(top, 7, 6 + row * 17.5, 46, 14, `fill="${lit ? 'var(--art-amber)' : row === 0 ? 'var(--art-cyan)' : 'var(--art-paper)'}" stroke="${STROKE}" stroke-width="0.9"`);
+  }
+  return art;
+}
+
+/** 动态链接器：顶面是一张表和一个指向槽位的箭头。 */
+const ldso = () => machine(26, (top) => {
+  let art = '';
+  for (let i = 0; i < 3; i++) art += quad(top, 11, 13 + i * 14, 26, 10, `fill="${i === 1 ? 'var(--art-cyan)' : 'var(--art-paper)'}" ${thin}`);
+  art += polyline([top(40, 31), top(54, 31)], `stroke="${STROKE}" stroke-width="2.4" stroke-linecap="round"`);
+  art += polyline([top(49, 25), top(55, 31), top(49, 37)], `stroke="${STROKE}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"`);
+  art += quad(top, 56, 22, 8, 18, 'fill="var(--art-amber)" stroke="none"');
+  return art;
+});
+
 interface NodeSpec {
   art: string;
   /** 通道到节点中心的裁切半径。 */
@@ -236,6 +280,9 @@ const AMBER = 'var(--art-amber)';
 const STEEL = 'var(--art-steel)';
 
 export const NODE_SPECS: Record<NodeId, NodeSpec> = {
+  regex: { art: sheet('RE', [[30, AMBER], [52, BLUE], [24, STEEL], [44, GREEN], [36, STEEL]]), radius: 62, labelY: 60 },
+  nfa: { art: automaton(true, AMBER), radius: 60, labelY: 60 },
+  dfa: { art: automaton(false, GREEN), radius: 60, labelY: 60 },
   source: { art: sheet('.c', [[48, BLUE], [34, GREEN], [56, STEEL], [28, AMBER], [44, STEEL]]), radius: 62, labelY: 60 },
   lexer: { art: lexer(), radius: 58, labelY: 60 },
   tokens: { art: tokenTray(), radius: 56, labelY: 60 },
@@ -255,4 +302,7 @@ export const NODE_SPECS: Record<NodeId, NodeSpec> = {
   object: { art: sheet('ELF', [[40, STEEL], [56, BLUE], [30, AMBER], [48, STEEL], [36, GREEN]]), radius: 62, labelY: 60 },
   linker: { art: linker(), radius: 58, labelY: 60 },
   image: { art: sheet('a.out', [[58, BLUE], [58, BLUE], [44, GREEN], [58, BLUE], [22, AMBER]], 'var(--art-green)'), radius: 62, labelY: 60 },
+  got: { art: gotRack(), radius: 56, labelY: 60 },
+  ldso: { art: ldso(), radius: 58, labelY: 60 },
+  shlib: { art: sheet('.so', [[48, GREEN], [36, BLUE], [56, STEEL], [30, AMBER], [44, STEEL]], 'var(--art-teal)'), radius: 62, labelY: 60 },
 };

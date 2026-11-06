@@ -42,16 +42,21 @@ export class UnionFind {
   }
 
   union(a: number, b: number, hooks: UfHooks = {}): boolean {
-    let ra = this.find(a, hooks);
-    let rb = this.find(b, hooks);
+    const ra = this.find(a, hooks);
+    const rb = this.find(b, hooks);
     if (ra === rb) return false;
+    this.link(ra, rb, hooks);
+    return true;
+  }
+
+  /** 连接两个不同的根：小树挂到大树下，大小相同时 rb 挂到 ra 下。已经找到根的调用方（比如 Kruskal）直接用它。 */
+  link(ra: number, rb: number, hooks: UfHooks = {}): void {
     if (this.size[ra] < this.size[rb]) [ra, rb] = [rb, ra];
     this.parent[rb] = ra;
     this.writes++;
     this.size[ra] += this.size[rb];
     this.writes++;
     hooks.attach?.(rb, ra);
-    return true;
   }
 }
 
@@ -249,7 +254,7 @@ export const unionfind: Lesson = {
   outro: {
     title: '两个数组解决连通性',
     desc: '只回答同组与否，所以能做到极快',
-    text: '并查集不支持拆分集合，也不能列出路径，只能回答连通问题，正因如此才能这么快。它常用在 Kruskal 最小生成树、判断无向图的环和图像连通区域标记里。',
+    text: '并查集不支持拆分集合，也不能列出路径，只能回答连通问题，正因如此才能这么快。它常用在 Kruskal 最小生成树、判断无向图的环和图像连通区域标记里，后面的最小生成树课就会用到它。',
     facts: [['单次最坏', 'O(log n)'], ['摊还', 'α(n)'], ['下一课', 'BFS']],
   },
 };

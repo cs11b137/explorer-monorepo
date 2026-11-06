@@ -5,6 +5,7 @@ import type { Clog, Snapshot } from '../engine/mvcc';
 import { STATUS_NAMES } from '../engine/mvcc';
 import { deformTuple, HEAP_HASVARWIDTH, HEAP_HOT_UPDATED, HEAP_KEYS_UPDATED, HEAP_NATTS_MASK, HEAP_ONLY_TUPLE, HEAP_UPDATED, HEAP_XMAX_COMMITTED, HEAP_XMAX_INVALID, HEAP_XMIN_COMMITTED, HEAP_XMIN_INVALID, LP_NAMES, PD_ALL_VISIBLE, PD_HAS_FREE_LINES, PD_PAGE_FULL, fillTuple, type Attr, type Page, type Value } from '../engine/page';
 import { BKPBLOCK_HAS_DATA, BKPBLOCK_HAS_IMAGE, parseRecord, RM_HEAP_ID, RM_XACT_ID, RMGR_NAMES, XLOG_HEAP_DELETE, XLOG_HEAP_HOT_UPDATE, XLOG_HEAP_INSERT, type WalEntry } from '../engine/wal';
+import { blockTrailer, decodeHandle, enc, FOOTER_SIZE, getFixed32, getFixed64, getVarint, HANDLE_MAX, kMaxSequenceNumber, kTypeDeletion, kTypeValue, LOG_HEADER_SIZE, LOG_TYPE_NAMES, logRecordCrc, parseBlock, parseFilterBlock, parseFooter, parseInternalKey, varintBytes, type BlockEntry, type BlockHandle, type BloomPolicy, type LogRecord, type MemEntry } from '../engine/lsm';
 import type { Color } from '../lessons/types';
 import { hex, LayerWriter, type Fidelity, type FieldOptions, type Wire } from './writer';
 
@@ -480,6 +481,227 @@ export function protocolMessage(bytes: Uint8Array, addr = 0): LayerWriter {
     }
     layer.field('结束', '\\0', () => layer.raw(bytes.subarray(at, at + 1)));
   }
+  return layer;
+}
+
+// ---------- LSM（LevelDB 1.23） ----------
+
+const TYPE_NAMES: Record<number, string> = { [kTypeDeletion]: 'kTypeDeletion', [kTypeValue]: 'kTypeValue' };
+const printable = (bytes: ArrayLike<number>): string => Array.from(bytes, (b) => (b >= 0x20 && b < 0x7f ? String.fromCharCode(b) : `\\x${b.toString(16).padStart(2, '0')}`)).join('');
+const seqText = (seq: bigint): string => (seq === kMaxSequenceNumber ? '最大值 2^56 − 1' : String(seq));
+const slice = (bytes: ArrayLike<number>, from: number, to: number): number[] => Array.from(bytes).slice(from, to);
+
+/** 8 字节 tag：低 8 位是类型，高 56 位是序列号。 */
+function tagField(layer: LayerWriter, bytes: ArrayLike<number>, at: number, note = '序列号 << 8 | 类型，小端 8 字节。'): void {
+  const tag = getFixed64(bytes, at);
+  const seq = tag >> 8n;
+  const type = Number(tag & 0xffn);
+  const from = layer.length;
+  layer.field('tag', `0x${tag.toString(16).padStart(16, '0')}`, () => layer.raw(slice(bytes, at, at + 8)), { note });
+  layer.over('类型 · 低 8 位', `${type} ${TYPE_NAMES[type] ?? ''}`.trim(), from, from + 1, {
+    note: type === kTypeDeletion ? '删除标记，也叫墓碑。值是空的。' : seq === kMaxSequenceNumber ? 'kValueTypeForSeek：查找时用，等于 kTypeValue。' : '普通的写入。',
+  });
+  layer.over('序列号 · 高 56 位', seqText(seq), from + 1, from + 8, {
+    note: seq === kMaxSequenceNumber ? '比任何真实序列号都大，所以这个键排在同一用户键的所有版本前面。' : '全库递增。同一个键，序列号大的版本更新。',
+  });
+}
+
+/** 写一个 varint 字段，返回它后面的位置。 */
+function varintField(layer: LayerWriter, name: string, bytes: ArrayLike<number>, at: number, note?: string): { value: number; next: number } {
+  const v = getVarint(bytes, at);
+  layer.field(name, v.value, () => layer.raw(slice(bytes, at, v.next)), { note: note ?? (v.next - at > 1 ? `varint，${v.next - at} 字节。` : 'varint：小于 128 只占 1 字节。') });
+  return v;
+}
+
+/** WriteBatch::rep_：一条日志记录的内容。 */
+export function writeBatchLayer(rep: Uint8Array, addr: number): LayerWriter {
+  const count = getFixed32(rep, 8);
+  const layer = makeLayer('WriteBatch', 'blue', `${count} 条操作，共 ${rep.length} 字节`, addr);
+  layer.field('sequence', String(getFixed64(rep, 0)), () => layer.raw(rep.subarray(0, 8)), { note: '这一批第一条操作的序列号，后面的操作依次加 1。' });
+  layer.field('count', count, () => layer.raw(rep.subarray(8, 12)));
+  let at = 12;
+  for (let i = 0; i < count; i++) {
+    const type = rep[at];
+    layer.field('类型', `${type} ${TYPE_NAMES[type]}`, () => layer.u8(type), { note: type === kTypeDeletion ? '删除只写键，没有值。' : '后面是键和值，各带一个 varint 长度。' });
+    const key = varintField(layer, '键长', rep, at + 1);
+    layer.field('键', printable(rep.subarray(key.next, key.next + key.value)), () => layer.raw(rep.subarray(key.next, key.next + key.value)));
+    at = key.next + key.value;
+    if (type === kTypeValue) {
+      const value = varintField(layer, '值长', rep, at);
+      layer.field('值', printable(rep.subarray(value.next, value.next + value.value)), () => layer.raw(rep.subarray(value.next, value.next + value.value)));
+      at = value.next + value.value;
+    }
+  }
+  return layer;
+}
+
+/** 日志记录：7 字节头 + WriteBatch。地址是记录在 .log 文件里的偏移。 */
+export function logRecordLayers(record: LogRecord): LayerWriter[] {
+  const r = record.bytes;
+  const masked = getFixed32(r, 0);
+  const length = r[4] | (r[5] << 8);
+  const type = r[6];
+  const ok = logRecordCrc(type, r.subarray(LOG_HEADER_SIZE)) === masked;
+  const head = makeLayer('日志记录头', 'violet', `.log 文件偏移 ${record.offset}，共 ${r.length} 字节`, record.offset);
+  head.field('checksum', hx(masked, 8), () => head.raw(r.subarray(0, 4)), { note: `CRC-32C，覆盖类型字节和数据，再做掩码（循环右移 15 位，加 0xa282ead8）。复算${ok ? '一致' : '不一致'}。` });
+  head.field('length', length, () => head.raw(r.subarray(4, 6)), { note: '数据部分的长度，小端 2 字节。' });
+  head.field('type', `${type} ${LOG_TYPE_NAMES[type]}`, () => head.raw(r.subarray(6, 7)), { note: '放得进当前 32 KiB 块就是 FULL，否则拆成 FIRST、MIDDLE、LAST 几段。' });
+  return [head, writeBatchLayer(r.subarray(LOG_HEADER_SIZE), record.offset + LOG_HEADER_SIZE)];
+}
+
+/** MemTable::Add 写进 arena 的一条记录，以及指向它的跳表节点。 */
+export function memEntryLayers(entry: MemEntry, color: Color = 'amber'): LayerWriter[] {
+  const e = entry.encoded;
+  const layer = makeLayer('MemTable 记录', color, `${e.length} 字节，放在 arena 里`);
+  const key = varintField(layer, 'internal_key_size', e, 0, '用户键长度 + 8。');
+  const userLen = key.value - 8;
+  layer.field('用户键', printable(e.subarray(key.next, key.next + userLen)), () => layer.raw(e.subarray(key.next, key.next + userLen)));
+  tagField(layer, e, key.next + userLen);
+  const value = varintField(layer, 'value_size', e, key.next + key.value);
+  if (value.value) layer.field('值', printable(e.subarray(value.next, value.next + value.value)), () => layer.raw(e.subarray(value.next)));
+  const node = makeLayer('SkipList::Node', 'teal', `高度 ${entry.height}：${8 + entry.height * 8} 字节`);
+  node.field('key', '指向上面的记录', () => node.unknown(8), { note: '进程内的地址，每次运行都不同。', hidden: true });
+  for (let i = 0; i < entry.height; i++) node.field(`next_[${i}]`, `第 ${i} 层的后继`, () => node.unknown(8), { note: i === 0 ? '第 0 层串起所有节点，按内部键排好序。' : '高层的链跳得远，查找时从最高层往下走。', hidden: true });
+  return [layer, node];
+}
+
+/** LookupKey：MemTable 查找时用的键。 */
+export function lookupKeyLayer(bytes: Uint8Array): LayerWriter {
+  const layer = makeLayer('LookupKey', 'blue', '序列号取当前最新，找不比它新的版本');
+  const key = varintField(layer, 'klength', bytes, 0, '用户键长度 + 8。');
+  layer.field('用户键', printable(bytes.subarray(key.next, key.next + key.value - 8)), () => layer.raw(bytes.subarray(key.next, key.next + key.value - 8)));
+  tagField(layer, bytes, key.next + key.value - 8);
+  return layer;
+}
+
+/** 块尾 5 字节：压缩类型和掩码后的 CRC-32C。 */
+function trailerLayer(file: Uint8Array, handle: BlockHandle): LayerWriter {
+  const at = handle.offset + handle.size;
+  const masked = getFixed32(file, at + 1);
+  const ok = blockTrailer(file.subarray(handle.offset, at), file[at]).every((b, i) => b === file[at + i]);
+  const layer = makeLayer('块尾', 'slate', '每个块后面都有', at);
+  layer.field('type', `${file[at]} kNoCompression`, () => layer.raw(file.subarray(at, at + 1)), { note: '本课关闭了压缩。默认是 Snappy，压缩省不到 12.5% 时也按不压缩存。' });
+  layer.field('crc', hx(masked, 8), () => layer.raw(file.subarray(at + 1, at + 5)), { note: `CRC-32C 覆盖块内容和类型字节，再做掩码。复算${ok ? '一致' : '不一致'}。` });
+  return layer;
+}
+
+interface BlockView {
+  name: string;
+  color: Color;
+  /** 每条记录的标题。 */
+  title: (entry: BlockEntry, index: number) => string;
+  /** 键的后半段（non_shared 部分）怎么拆。 */
+  key: (layer: LayerWriter, block: Uint8Array, entry: BlockEntry, keyAt: number) => void;
+  value: (layer: LayerWriter, block: Uint8Array, entry: BlockEntry, valueAt: number) => void;
+}
+
+/** 一个块：记录、重启点数组、重启点个数，加块尾。地址是在 .ldb 文件里的偏移。 */
+function blockLayers(file: Uint8Array, handle: BlockHandle, view: BlockView): LayerWriter[] {
+  const block = file.subarray(handle.offset, handle.offset + handle.size);
+  const parsed = parseBlock(block);
+  const layer = makeLayer(view.name, view.color, `${parsed.entries.length} 条记录，${parsed.restarts.length} 个重启点，${handle.size} 字节`, handle.offset);
+  parsed.entries.forEach((entry, i) => {
+    layer.field(`第 ${i + 1} 条`, view.title(entry, i), undefined, { heading: true });
+    const shared = varintField(layer, 'shared', block, entry.offset, parsed.restarts.includes(entry.offset) ? '重启点：不和前一个键共用前缀，存完整的键。' : `和前一个键共用的前缀字节数。`);
+    const nonShared = varintField(layer, 'non_shared', block, shared.next, '这个键自己要存的字节数。');
+    const valueLen = varintField(layer, 'value_length', block, nonShared.next);
+    view.key(layer, block, entry, valueLen.next);
+    view.value(layer, block, entry, valueLen.next + entry.nonShared);
+  });
+  parsed.restarts.forEach((offset, i) => layer.field(`restarts[${i}]`, offset, () => layer.raw(block.subarray(parsed.restartsAt + i * 4, parsed.restartsAt + i * 4 + 4)), { note: '重启点在块内的偏移。查找时先在这些点上二分，再往后顺序扫。' }));
+  layer.field('num_restarts', parsed.restarts.length, () => layer.raw(block.subarray(block.length - 4)));
+  return [layer, trailerLayer(file, handle)];
+}
+
+/** 数据块和索引块的键是内部键：non_shared 部分可能只含用户键的后半段，也可能包含 tag。 */
+function internalKeyPart(layer: LayerWriter, block: Uint8Array, entry: BlockEntry, at: number): void {
+  const userLen = entry.key.length - 8;
+  const userPart = Math.max(0, userLen - entry.shared);
+  if (userPart) {
+    const full = printable(entry.key.subarray(0, userLen));
+    layer.field('key_delta', entry.shared ? `${printable(block.subarray(at, at + userPart))}（完整键 ${full}）` : full, () => layer.raw(block.subarray(at, at + userPart)), { note: entry.shared ? `前 ${entry.shared} 字节从上一个键借。` : '用户键。' });
+  }
+  if (entry.shared <= userLen) tagField(layer, block, at + userPart);
+  else layer.field('key_delta', `tag 的后 ${entry.nonShared} 字节`, () => layer.raw(block.subarray(at, at + entry.nonShared)), { note: '同一个用户键的两个版本，连 tag 的前几个字节都能共用。' });
+}
+
+const textValue = (layer: LayerWriter, block: Uint8Array, entry: BlockEntry, at: number): void => {
+  if (entry.valueLength) layer.field('value', printable(entry.value), () => layer.raw(block.subarray(at, at + entry.valueLength)));
+};
+
+const handleValue = (what: string) => (layer: LayerWriter, block: Uint8Array, entry: BlockEntry, at: number): void => {
+  const handle = decodeHandle(entry.value);
+  const from = layer.length;
+  layer.field('BlockHandle', `偏移 ${handle.offset}，长 ${handle.size}`, () => layer.raw(block.subarray(at, at + entry.valueLength)), { note: `${what}的位置。两个 varint64，长度不含块尾 5 字节。` });
+  const offsetLen = varintBytes(handle.offset).length;
+  layer.over('offset', handle.offset, from, from + offsetLen);
+  layer.over('size', handle.size, from + offsetLen, from + entry.valueLength);
+};
+
+const keyTitle = (entry: BlockEntry): string => {
+  const k = parseInternalKey(entry.key);
+  return `${printable(k.user)} @ ${seqText(k.seq)}${k.type === kTypeDeletion ? '（墓碑）' : ''}`;
+};
+
+export function dataBlockLayers(file: Uint8Array, handle: BlockHandle): LayerWriter[] {
+  return blockLayers(file, handle, { name: '数据块', color: 'amber', title: keyTitle, key: internalKeyPart, value: textValue });
+}
+
+export function indexBlockLayers(file: Uint8Array, handle: BlockHandle): LayerWriter[] {
+  return blockLayers(file, handle, { name: '索引块', color: 'green', title: (entry) => `${keyTitle(entry)} → 数据块`, key: internalKeyPart, value: handleValue('数据块') });
+}
+
+export function metaindexBlockLayers(file: Uint8Array, handle: BlockHandle): LayerWriter[] {
+  return blockLayers(file, handle, {
+    name: '元索引块',
+    color: 'teal',
+    title: (entry) => printable(entry.key),
+    key: (layer, block, entry, at) => layer.field('key', printable(entry.key), () => layer.raw(block.subarray(at, at + entry.nonShared)), { note: '"filter." 加过滤策略的名字。打开表时按这个名字找过滤块。' }),
+    value: handleValue('过滤块'),
+  });
+}
+
+/** 过滤块：每 2 KiB 数据一个布隆过滤器，后面是偏移数组。probe 是要演示的查找键。 */
+export function filterBlockLayers(file: Uint8Array, handle: BlockHandle, policy: BloomPolicy, keys: Array<{ key: string; inside: boolean }>): LayerWriter[] {
+  const block = file.subarray(handle.offset, handle.offset + handle.size);
+  const parsed = parseFilterBlock(block);
+  const layer = makeLayer('过滤块', 'violet', `${parsed.filters.length} 个布隆过滤器，${handle.size} 字节`, handle.offset);
+  parsed.filters.forEach((filter, i) => {
+    const bits = (filter.bytes.length - 1) * 8;
+    const from = layer.length;
+    layer.field(`filter[${i}] 位数组`, `${bits} 位`, () => layer.raw(filter.bytes.subarray(0, filter.bytes.length - 1)), { note: `键数 × 10 位，不足 64 位按 64 位。` });
+    for (const { key, inside } of keys) {
+      const probes = policy.probes(enc(key), bits, filter.bytes[filter.bytes.length - 1]);
+      const hits = probes.map((pos) => Boolean(filter.bytes[pos >> 3] & (1 << (pos & 7))));
+      layer.over(`${key} 的 ${probes.length} 个探针`, probes.map((pos, j) => `${pos}${hits[j] ? '=1' : '=0'}`).join(' '), from, from + filter.bytes.length - 1, {
+        note: inside ? '写入时置过这些位，所以全是 1。' : hits.every(Boolean) ? '碰巧全是 1：误判，要读数据块才知道没有。' : '有一位是 0：这个键一定不在文件里，不用读数据块。',
+      });
+    }
+    layer.field(`filter[${i}] k`, filter.bytes[filter.bytes.length - 1], () => layer.raw(filter.bytes.subarray(filter.bytes.length - 1)), { note: '探针个数 = 10 × 0.69 取整。' });
+  });
+  parsed.filters.forEach((filter, i) => layer.field(`offset[${i}]`, filter.offset, () => layer.raw(block.subarray(parsed.arrayOffset + i * 4, parsed.arrayOffset + i * 4 + 4))));
+  layer.field('array_offset', parsed.arrayOffset, () => layer.raw(block.subarray(block.length - 5, block.length - 1)), { note: '偏移数组的起点。' });
+  layer.field('base_lg', parsed.baseLg, () => layer.raw(block.subarray(block.length - 1)), { note: `数据块偏移 >> ${parsed.baseLg} 得到过滤器编号，也就是每 ${1 << parsed.baseLg} 字节一个。` });
+  return [layer, trailerLayer(file, handle)];
+}
+
+/** Footer：文件最后 48 字节。打开表时先读它。 */
+export function footerLayer(file: Uint8Array): LayerWriter {
+  const at = file.length - FOOTER_SIZE;
+  const footer = parseFooter(file);
+  const layer = makeLayer('Footer', 'blue', '文件最后 48 字节', at);
+  let p = at;
+  for (const [name, handle] of [['metaindex_handle', footer.metaindex], ['index_handle', footer.index]] as const) {
+    const end = decodeHandle(file, p).next;
+    const from = layer.length;
+    layer.field(name, `偏移 ${handle.offset}，长 ${handle.size}`, () => layer.raw(file.subarray(p, end)), { note: name === 'index_handle' ? '索引块的位置。' : '元索引块的位置，元索引块再指向过滤块。' });
+    const offsetLen = varintBytes(handle.offset).length;
+    layer.over('offset', handle.offset, from, from + offsetLen);
+    layer.over('size', handle.size, from + offsetLen, from + (end - p));
+    p = end;
+  }
+  layer.field('填充', `${HANDLE_MAX * 2 - footer.used} 字节`, () => layer.raw(file.subarray(p, at + HANDLE_MAX * 2)), { note: '两个 BlockHandle 最多各 20 字节，补零到 40 字节，footer 才是定长的。' });
+  layer.field('magic', `0x${footer.magic.toString(16)}`, () => layer.raw(file.subarray(file.length - 8)), { note: 'kTableMagicNumber，小端 8 字节。读到的不是它，就不是一个 LevelDB 表文件。' });
   return layer;
 }
 

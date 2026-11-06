@@ -139,6 +139,36 @@ describe('产物面板的折叠语义', () => {
     expect(foldArts(events, firstToken, lesson.initial).has('toks')).toBe(false);
   });
 
+  it('动态链接课：GOT[3] 在解析之后才是 scale，跳回去又变回 PLT 的地址', () => {
+    const dyn = LESSONS.find((item) => item.id === 'dynlink')!;
+    const events = timeline(dyn);
+    const gotRow = (end: number) => {
+      const view = foldArts(events, end, dyn.initial).get('got');
+      return view && view.kind === 'table' ? view.rows[3].cells.slice(2) : null;
+    };
+    const written = events.findIndex((event) => event.type === 'packet' && event.row.info.startsWith('回填 GOT[3]'));
+    expect(written).toBeGreaterThan(0);
+    expect(gotRow(written)).toEqual(['201056', 'scale@plt+6']);
+    expect(gotRow(written + 1)).toEqual(['7ffff7fc4000', 'scale']);
+    expect(gotRow(events.findIndex((event) => event.step === 2))).toBeNull();
+    expect(gotRow(written)).toEqual(['201056', 'scale@plt+6']);
+  });
+
+  it('正则课：子集表逐行长出来，最小化之后换成对照表', () => {
+    const re = LESSONS.find((item) => item.id === 'regex')!;
+    const events = timeline(re);
+    const titles = events.map((_, end) => foldArts(events, end + 1, re.initial).get('subset')?.title ?? null);
+    expect(titles[0]).toBeNull();
+    expect(titles).toContain('子集构造');
+    expect(titles.at(-1)).toBe('和词法器的转移表对照');
+    const rows = events.map((_, end) => {
+      const view = foldArts(events, end + 1, re.initial).get('subset');
+      return view?.title === '子集构造' && view.kind === 'table' ? view.rows.length : 0;
+    });
+    expect(Math.max(...rows)).toBe(6);
+    expect(rows.filter(Boolean)).toEqual([...rows.filter(Boolean)].sort((a, b) => a - b));
+  });
+
   it('值为 null 时删除面板', () => {
     const view: ArtView = { kind: 'code', title: 't', lines: [] };
     const events: LessonEvent[] = [{ type: 'art', set: { a: view } }, { type: 'art', set: { a: null } }];

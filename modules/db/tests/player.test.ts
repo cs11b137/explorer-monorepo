@@ -136,6 +136,23 @@ describe('播放器', () => {
     }
   });
 
+  it('LSM 课：跳回合并之前，L0 的两个文件又回来了', () => {
+    const lsm = LESSONS.find((item) => item.id === 'lsm')!;
+    const events = timeline(lsm);
+    const cellsOf = (end: number, row: string) => {
+      const spec = foldBoards(lsm, events, end).specs.get('lsm')!;
+      if (spec.kind !== 'lanes') throw new Error('lsm 结构板应该是 lanes');
+      return spec.rows.find((r) => r.label === row)!.cells.filter((c) => !c.gap).map((c) => c.text);
+    };
+    const lastStep = events.findIndex((event) => event.step === lsm.steps.length - 1);
+    expect(cellsOf(lastStep, 'L0')).toEqual(['#14', 'ann', 'cat', 'dan', 'fay', '#11', 'cat', 'eve', 'gus', 'hal']);
+    expect(cellsOf(events.length, 'L0')).toEqual([]);
+    expect(cellsOf(events.length, 'L1')[0]).toBe('#15');
+    // 先折叠到结尾再回到合并之前，得到的是同一个结构板对象，没有残留。
+    expect(foldBoards(lsm, events, lastStep).specs.get('lsm')).toBe(foldBoards(lsm, events, lastStep).specs.get('lsm'));
+    expect(cellsOf(0, 'MemTable')).toEqual([]);
+  });
+
   it('state 事件值为 null 时删除该行', () => {
     const events = [{ type: 'state', node: 'client', set: { a: '1' } }, { type: 'state', node: 'client', set: { a: null } }] as Parameters<typeof foldStates>[0];
     expect(foldStates(events, 2).get('client')?.a).toBeUndefined();

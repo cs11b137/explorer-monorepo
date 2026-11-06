@@ -125,6 +125,18 @@ describe('播放器', () => {
     expect(foldStates(events, events.length).get('app')?.状态).toBeUndefined();
   });
 
+  it('信号课：处理期间屏蔽 SIGUSR1，恢复现场后屏蔽行删除', () => {
+    const signal = LESSONS.find((item) => item.id === 'signal')!;
+    const events = timeline(signal);
+    const handlerStep = signal.steps.findIndex((step) => step.title === '运行处理函数');
+    const end = events.findIndex((event) => event.step === handlerStep + 1);
+    expect(foldStates(events, end).get('proc2')?.屏蔽).toBe('SIGUSR1');
+    const last = foldStates(events, events.length).get('proc2');
+    expect(last?.屏蔽).toBeUndefined();
+    expect(last?.待处理).toBeUndefined();
+    expect(last?.状态).toBe('睡眠，在 read()');
+  });
+
   it('dispose 之后不再通知界面', async () => {
     const { player, settle, state } = setup();
     player.reset();

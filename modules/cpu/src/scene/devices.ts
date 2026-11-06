@@ -333,6 +333,7 @@ export const NODE_SPECS: Record<NodeId, NodeSpec> = {
   swb: spec(stage('WB', 'var(--art-teal)'), 54, 58, 58, -48),
   hazard: spec(muxBlock('FWD'), 54, 52, 60, -36),
   predictor: spec(predictorBlock(), 58, 56, 68, -36),
+  csr: spec(chip('CSR'), 58, 58, 68, -44),
   core0: spec(chip('CORE0'), 58, 58, 68, -44),
   core1: spec(chip('CORE1'), 58, 58, 68, -44),
   cache: spec(cacheBlock(1), 60, 56, 68, -40),

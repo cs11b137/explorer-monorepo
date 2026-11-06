@@ -58,8 +58,8 @@ export interface Control {
   aluA: 'rs1' | 'pc' | 'zero';
   memRead: boolean;
   memWrite: boolean;
-  /** 写回寄存器的数据来源。 */
-  wbSrc: 'alu' | 'mem' | 'pc+4' | 'none';
+  /** 写回寄存器的数据来源。csr 只用于流水线里的 CSR 指令，它在 MEM 级读写 CSR。 */
+  wbSrc: 'alu' | 'mem' | 'pc+4' | 'csr' | 'none';
   branch: boolean;
   jump: boolean;
   /** 主控制器给 ALU 控制器的 2 位编码，只是教科书约定，不是 ISA 的一部分。 */

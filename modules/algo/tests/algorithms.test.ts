@@ -7,9 +7,15 @@
 import { describe, expect, it } from 'vitest';
 import { LESSON_BY_ID } from '../src/lessons';
 import { AvlTree, balanceOf, type AvlNode } from '../src/lessons/avl';
+import { conflictOf, countQueens, solveQueens } from '../src/lessons/backtrack';
 import { binarySearch } from '../src/lessons/binarysearch';
 import { adjacency, bfs, type Edge } from '../src/lessons/bfs';
+import { Bst, type BstNode } from '../src/lessons/bst';
+import { topoSort, type Arc } from '../src/lessons/dfs';
 import { dijkstra, INT_MAX, type WeightedEdge } from '../src/lessons/dijkstra';
+import { kruskal } from '../src/lessons/mst';
+import { radixSort } from '../src/lessons/radixsort';
+import { evaluate, IntStack } from '../src/lessons/stack';
 import { vecNew, vecPush } from '../src/lessons/dynarray';
 import { FNV_OFFSET, FNV_PRIME, fnv1a32, HashTable } from '../src/lessons/hashtable';
 import { MinHeap } from '../src/lessons/heap';
@@ -573,6 +579,307 @@ describe('KMP', () => {
       expect(found.matches).toEqual(truth);
       expect(found.cmp).toBeLessThanOrEqual(2 * text.length);
     }
+  });
+});
+
+describe('栈和双栈求值', () => {
+  /** 递归下降：和双栈法完全不同的写法，除法同样向 0 截断。 */
+  const descent = (s: string) => {
+    let i = 0;
+    const factor = (): number => {
+      if (s[i] === '(') {
+        i++;
+        const value = expr();
+        i++;
+        return value;
+      }
+      let value = 0;
+      while (i < s.length && s[i] >= '0' && s[i] <= '9') value = value * 10 + Number(s[i++]);
+      return value;
+    };
+    const term = (): number => {
+      let value = factor();
+      while (s[i] === '*' || s[i] === '/') {
+        const op = s[i++];
+        const right = factor();
+        value = op === '*' ? value * right : Math.trunc(value / right);
+      }
+      return value;
+    };
+    const expr = (): number => {
+      let value = term();
+      while (s[i] === '+' || s[i] === '-') {
+        const op = s[i++];
+        const right = term();
+        value = op === '+' ? value + right : value - right;
+      }
+      return value;
+    };
+    return expr();
+  };
+
+  it('reference.c：课程的表达式和另外几个例子', () => {
+    const cases: Array<[string, number, number, number, number]> = [
+      ['2*(3+4)-6/2', 11, 14, 14, 5],
+      ['8-3-2', 3, 7, 7, 1],
+      ['2*(3+(4-1))*5', 60, 15, 15, 7],
+      ['100/7/2', 7, 7, 7, 1],
+      ['1+2*3-4/2', 5, 13, 13, 4],
+      ['(((9)))', 9, 4, 4, 3],
+    ];
+    for (const [expr, value, pushes, pops, peeks] of cases) expect(evaluate(expr, 16), expr).toMatchObject({ value, pushes, pops, peeks });
+    expect(lastOps('stack')).toBe(14 + 14 + 5);
+  });
+
+  it('和递归下降对照随机表达式', () => {
+    const next = rng(17);
+    const gen = (depth: number): string => {
+      const parts = [depth > 0 && next(3) === 0 ? `(${gen(depth - 1)})` : String(next(10))];
+      const count = next(4);
+      for (let k = 0; k < count; k++) {
+        const op = '+-*/'[next(4)];
+        parts.push(op, op === '/' ? String(1 + next(9)) : depth > 0 && next(3) === 0 ? `(${gen(depth - 1)})` : String(next(10)));
+      }
+      return parts.join('');
+    };
+    for (let round = 0; round < 300; round++) {
+      const expr = gen(3);
+      const result = evaluate(expr, 64);
+      expect(result.value, expr).toBe(descent(expr));
+      // 每个记号最多入栈一次，运算结果再入栈一次；出栈和入栈一样多。
+      expect(result.pops).toBe(result.pushes);
+    }
+  });
+
+  it('出栈不清零，旧值还在数组里；溢出和下溢都报错', () => {
+    const s = new IntStack(2);
+    s.push(5);
+    s.push(6);
+    expect(() => s.push(7)).toThrow();
+    expect(s.pop()).toBe(6);
+    expect(s.data).toEqual([5, 6]);
+    expect(s.top).toBe(1);
+    s.pop();
+    expect(() => s.pop()).toThrow();
+  });
+});
+
+describe('二叉搜索树', () => {
+  const KEYS = [50, 30, 70, 20, 40, 60, 80, 65];
+  const check = (node: BstNode | null, lo = -Infinity, hi = Infinity): number => {
+    if (!node) return 0;
+    expect(node.key).toBeGreaterThan(lo);
+    expect(node.key).toBeLessThan(hi);
+    return 1 + check(node.left, lo, node.key) + check(node.right, node.key, hi);
+  };
+
+  it('reference.c：插入、查找、三种删除', () => {
+    const tree = new Bst();
+    KEYS.forEach((key) => tree.insert(key));
+    expect(tree.preorder()).toEqual([50, 30, 20, 40, 70, 60, 65, 80]);
+    expect([tree.cmp, tree.height()]).toEqual([13, 4]);
+    let before = tree.cmp;
+    expect(tree.find(65)?.key).toBe(65);
+    expect(tree.cmp - before).toBe(4);
+    before = tree.cmp;
+    expect(tree.find(45)).toBeNull();
+    expect(tree.cmp - before).toBe(3);
+    const shapes = [20, 30, 50].map((key) => {
+      expect(tree.remove(key)).toBe(true);
+      return tree.preorder();
+    });
+    expect(shapes).toEqual([[50, 30, 40, 70, 60, 65, 80], [50, 40, 70, 60, 65, 80], [60, 40, 70, 65, 80]]);
+    expect([tree.cmp, tree.writes, tree.walks]).toEqual([26, 12, 2]);
+    expect(lastOps('bst')).toBe(26 + 12 + 2);
+    const chain = new Bst();
+    [20, 30, 40, 50, 60, 65, 70, 80].forEach((key) => chain.insert(key));
+    expect(chain.height()).toBe(8);
+  });
+
+  it('删除双孩子节点时节点地址不变，只换键', () => {
+    const tree = new Bst();
+    KEYS.forEach((key) => tree.insert(key));
+    const root = tree.root!;
+    tree.remove(50);
+    expect(tree.root).toBe(root);
+    expect(root.key).toBe(60);
+  });
+
+  it('和 Set 对照随机插入删除，不变量始终成立', () => {
+    const next = rng(23);
+    const tree = new Bst();
+    const truth = new Set<number>();
+    for (let round = 0; round < 600; round++) {
+      const key = next(80);
+      if (next(3) === 0) expect(tree.remove(key)).toBe(truth.delete(key));
+      else {
+        tree.insert(key);
+        truth.add(key);
+      }
+      const probe = next(80);
+      expect(tree.find(probe) !== null).toBe(truth.has(probe));
+    }
+    expect(check(tree.root)).toBe(truth.size);
+    expect(tree.inorder()).toEqual([...truth].sort((a, b) => a - b));
+    expect(tree.remove(1000)).toBe(false);
+  });
+});
+
+describe('DFS 拓扑排序', () => {
+  const ARCS: Arc[] = [[0, 1], [0, 2], [1, 3], [2, 3], [3, 4], [2, 5], [5, 4], [6, 2]];
+
+  it('reference.c：拓扑序、完成顺序、读写次数', () => {
+    const result = topoSort(7, ARCS);
+    expect(result.order).toEqual([6, 0, 2, 5, 1, 3, 4]);
+    expect(result.finished).toEqual([4, 3, 1, 5, 2, 0, 6]);
+    expect([result.scanned, result.reads, result.writes, result.cyclic]).toEqual([8, 15, 21, false]);
+    expect(lastOps('dfs')).toBe(15 + 21);
+  });
+
+  it('reference.c：有环时扫描到灰色顶点', () => {
+    expect(topoSort(4, [[0, 1], [1, 2], [2, 0], [2, 3]]).cyclic).toBe(true);
+  });
+
+  it('随机有向无环图：结果是排列，每条边都从前指向后', () => {
+    const next = rng(29);
+    for (let round = 0; round < 60; round++) {
+      const n = 3 + next(12);
+      // 先按一个随机排列定好先后，只连从前往后的边，保证无环。
+      const rank = Array.from({ length: n }, (_, index) => index);
+      for (let k = n - 1; k > 0; k--) {
+        const j = next(k + 1);
+        [rank[k], rank[j]] = [rank[j], rank[k]];
+      }
+      const arcs: Arc[] = [];
+      for (let k = 0; k < n * 2; k++) {
+        const a = next(n);
+        const b = next(n);
+        if (a < b) arcs.push([rank[a], rank[b]]);
+      }
+      const { order, cyclic, scanned } = topoSort(n, arcs);
+      expect(cyclic).toBe(false);
+      expect(scanned).toBe(arcs.length);
+      expect([...order].sort((x, y) => x - y)).toEqual(Array.from({ length: n }, (_, index) => index));
+      for (const [a, b] of arcs) expect(order.indexOf(a)).toBeLessThan(order.indexOf(b));
+    }
+  });
+});
+
+describe('Kruskal 最小生成树', () => {
+  const EDGES: WeightedEdge[] = [[0, 1, 6], [0, 2, 4], [1, 2, 7], [1, 3, 11], [2, 3, 9], [2, 5, 12], [3, 4, 1], [3, 5, 8], [4, 5, 3]];
+
+  /** Prim 的 O(V²) 写法，只算总权。 */
+  const prim = (n: number, edges: WeightedEdge[]) => {
+    const w = Array.from({ length: n }, () => new Array(n).fill(Infinity));
+    for (const [a, b, c] of edges) w[a][b] = w[b][a] = Math.min(w[a][b], c);
+    const best = new Array(n).fill(Infinity);
+    const used = new Array(n).fill(false);
+    best[0] = 0;
+    let total = 0;
+    for (let round = 0; round < n; round++) {
+      let u = -1;
+      for (let v = 0; v < n; v++) if (!used[v] && (u < 0 || best[v] < best[u])) u = v;
+      used[u] = true;
+      total += best[u];
+      for (let v = 0; v < n; v++) if (!used[v]) best[v] = Math.min(best[v], w[u][v]);
+    }
+    return total;
+  };
+
+  it('reference.c：选中的边、跳过的边、总权、并查集读写', () => {
+    const result = kruskal(6, EDGES);
+    expect(result.tree.map(([u, v]) => `${u}-${v}`)).toEqual(['3-4', '4-5', '0-2', '0-1', '2-3']);
+    expect(result.rejected.map(([u, v]) => `${u}-${v}`)).toEqual(['1-2', '3-5']);
+    expect([result.total, result.examined, result.uf.reads, result.uf.writes]).toEqual([23, 7, 19, 10]);
+    expect(lastOps('mst')).toBe(7 + 19 + 10);
+    expect(prim(6, EDGES)).toBe(23);
+  });
+
+  it('和 Prim 对照随机连通图', () => {
+    const next = rng(37);
+    for (let round = 0; round < 40; round++) {
+      const n = 2 + next(12);
+      const edges: WeightedEdge[] = [];
+      for (let v = 1; v < n; v++) edges.push([next(v), v, 1 + next(30)]);
+      for (let k = 0; k < n; k++) edges.push([next(n), next(n), 1 + next(30)]);
+      const result = kruskal(n, edges);
+      expect(result.tree.length).toBe(n - 1);
+      expect(result.total).toBe(prim(n, edges));
+    }
+  });
+});
+
+describe('基数排序', () => {
+  it('reference.c：每一趟的结果和四种操作的次数', () => {
+    const passes: number[][] = [];
+    const result = radixSort([170, 45, 75, 90, 802, 24, 2, 66], { copied: (a) => passes.push([...a]) });
+    expect(passes).toEqual([[170, 90, 802, 2, 24, 45, 75, 66], [802, 2, 24, 45, 66, 170, 75, 90], [2, 24, 45, 66, 75, 90, 170, 802]]);
+    expect([result.passes, result.counts, result.sums, result.places, result.copies, result.cmp]).toEqual([3, 24, 30, 24, 24, 0]);
+    expect(lastOps('radixsort')).toBe(24 + 30 + 24 + 24);
+  });
+
+  it('reference.c：第一趟的计数和起始位置', () => {
+    let totals: number[] = [];
+    let start: number[] = [];
+    radixSort([170, 45, 75, 90, 802, 24, 2, 66], {
+      prefix: (s, t) => {
+        if (!totals.length) {
+          totals = [...t];
+          start = [...s];
+        }
+      },
+    });
+    expect(totals).toEqual([2, 0, 2, 0, 1, 2, 1, 0, 0, 0]);
+    expect(start).toEqual([0, 2, 2, 4, 4, 5, 7, 8, 8, 8]);
+  });
+
+  it('和内置排序对照，包括 0 和重复值', () => {
+    const next = rng(41);
+    for (const n of [1, 2, 7, 64, 300]) {
+      const input = Array.from({ length: n }, () => (next(4) === 0 ? 0 : next(100000)));
+      expect(radixSort(input).sorted).toEqual([...input].sort((x, y) => x - y));
+    }
+    expect(radixSort([0, 0, 0])).toMatchObject({ sorted: [0, 0, 0], passes: 0 });
+  });
+});
+
+describe('N 皇后', () => {
+  /** 枚举所有排列，逐对检查斜线：和回溯完全不同的写法。 */
+  const brute = (n: number) => {
+    const out: number[][] = [];
+    const walk = (prefix: number[]) => {
+      if (prefix.length === n) {
+        const ok = prefix.every((a, i) => prefix.every((b, j) => i === j || Math.abs(a - b) !== Math.abs(i - j)));
+        if (ok) out.push(prefix);
+        return;
+      }
+      for (let c = 0; c < n; c++) if (!prefix.includes(c)) walk([...prefix, c]);
+    };
+    walk([]);
+    return out;
+  };
+
+  it('reference.c：4 皇后的第一个解和搜索量', () => {
+    const result = solveQueens(4);
+    expect(result.solution).toEqual([1, 3, 0, 2]);
+    expect([result.tries, result.compares, result.calls, result.backtracks]).toEqual([26, 36, 9, 4]);
+    // 写 q 的次数等于成功放下的次数，也就是调用次数减 1。
+    expect(lastOps('backtrack')).toBe(26 + 36 + (9 - 1));
+  });
+
+  it('reference.c：1 到 8 皇后的解数，和枚举排列一致', () => {
+    const counts = Array.from({ length: 8 }, (_, index) => countQueens(index + 1).solutions);
+    expect(counts).toEqual([1, 0, 0, 2, 10, 4, 40, 92]);
+    for (let n = 1; n <= 6; n++) expect(countQueens(n).solutions).toBe(brute(n).length);
+  });
+
+  it('找到的第一个解合法，且是字典序最小的解', () => {
+    for (let n = 4; n <= 8; n++) {
+      const { solution } = solveQueens(n);
+      solution!.forEach((col, row) => expect(conflictOf(solution!, row, col).at).toBeNull());
+      if (n <= 7) expect(solution).toEqual(brute(n)[0]);
+    }
+    expect(solveQueens(3).solution).toBeNull();
   });
 });
 

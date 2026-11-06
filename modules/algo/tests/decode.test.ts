@@ -12,6 +12,9 @@ const RING: CField[] = [['buf', 'ptr'], ['cap', 'uint32_t'], ['head', 'uint32_t'
 const SLOT: CField[] = [['key', 'ptr'], ['value', 'int'], ['hash', 'uint32_t'], ['state', 'uint8_t']];
 const AVL: CField[] = [['key', 'int'], ['height', 'int'], ['left', 'ptr'], ['right', 'ptr']];
 const ITEM: CField[] = [['dist', 'int'], ['node', 'int']];
+const STACK: CField[] = [['data', 'ptr'], ['top', 'int'], ['cap', 'int']];
+const BST: CField[] = [['key', 'int'], ['left', 'ptr'], ['right', 'ptr']];
+const EDGE: CField[] = [['u', 'int'], ['v', 'int'], ['w', 'int']];
 
 describe('结构布局和真实编译器一致', () => {
   // 期望值抄自 tests/reference/layouts.c，由 clang -target x86_64-unknown-linux-gnu 用 _Static_assert 核对过。
@@ -22,18 +25,24 @@ describe('结构布局和真实编译器一致', () => {
     ['struct slot', SLOT, 24, [0, 8, 12, 16]],
     ['struct avl_node', AVL, 24, [0, 4, 8, 16]],
     ['struct pq_item', ITEM, 8, [0, 4]],
+    ['struct stack', STACK, 16, [0, 8, 12]],
+    ['struct bst_node', BST, 24, [0, 8, 16]],
+    ['struct edge', EDGE, 12, [0, 4, 8]],
   ] as const)('%s', (_name, fields, size, offsets) => {
     const layout = layoutOf(fields as unknown as CField[]);
     expect(layout.size).toBe(size);
     expect(layout.fields.map((field) => field.offset)).toEqual(offsets);
   });
 
-  it('填充字节的位置：node 在字段中间，ring 和 slot 在尾部', () => {
+  it('填充字节的位置：node 和 bst_node 在字段中间，ring 和 slot 在尾部', () => {
     expect(layoutOf(NODE).pads).toEqual([{ offset: 4, size: 4, before: 'next' }]);
     expect(layoutOf(RING).pads).toEqual([{ offset: 20, size: 4, before: null }]);
     expect(layoutOf(SLOT).pads).toEqual([{ offset: 17, size: 7, before: null }]);
     expect(layoutOf(AVL).pads).toEqual([]);
     expect(layoutOf(ITEM).pads).toEqual([]);
+    expect(layoutOf(BST).pads).toEqual([{ offset: 4, size: 4, before: 'left' }]);
+    expect(layoutOf(STACK).pads).toEqual([]);
+    expect(layoutOf(EDGE).pads).toEqual([]);
   });
 
   const hasClang = (() => {
