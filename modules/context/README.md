@@ -23,7 +23,7 @@ python scripts/subset-fonts.py <woff2 目录>  # 按本站字符重新裁剪 Ios
 - `src/scene/`：`devices.ts` 是设备节点的图形，`ds.ts`、`plugin.ts` 和 llm 相同（数据结构图元的几何和帧间动画，含 `heat` 热力图）。
 - `tests/`：`core.test.ts` 核对计算核心（期望值手写自规范）；`decode.test.ts` 核对写字节的层；`lessons.test.ts` 检查每节课的结构和布局；`narrative.test.ts` 核对 messages 课的文案和计算结果，`narrative.api.test.ts` 核对 sse、dialects、retry 三课，`core.api.test.ts` 核对 retry.ts 和 openai.ts 里 Responses 流、OpenAI / OpenRouter 错误；`narrative.context.test.ts` 核对上下文工程组五课，`core.context.test.ts` 核对 recall.ts 和 context.ts；`player.test.ts` 检查播放器。
 - `e2e/app.spec.ts`：端到端测试，课程清单取自源码。
-- 分词器不在本模块：用的是共享包 `packages/llm-core`（`@explorer/llm-core`）里 LLM EXPLORER 的那个字节级 BPE，见下文「为什么复用 llm 的分词器」。JSON、HTTP/1.1 和 BM25 的实现也在共享包里（和 RAG EXPLORER 共用），`core/` 里同名文件转导出。
+- 分词器不在本模块：用的是共享包 `packages/llm-core`（`@explorer/llm-core`）里 LLM EXPLORER 的那个字节级 BPE，见下文「为什么复用 llm 的分词器」。JSON、HTTP/1.1 和 BM25 的实现也在共享包里（和 RAG EXPLORER 共用），`core/` 里同名文件转导出。AGENT EXPLORER 新建时又把 `sse.ts`、`tokens.ts`、`template.ts`、`anthropic.ts`、`cache.ts`、`pricing.ts`、`ids.ts` 原样搬进了共享包（Agent 循环要用 Messages API 的请求和响应、token 计数和计费），这里的同名文件只剩一行转导出，接口、课程内容和数字都没变（本模块的单元测试和 e2e 都通过）。
 
 ## 本站约定
 
@@ -81,6 +81,8 @@ python scripts/subset-fonts.py <woff2 目录>  # 按本站字符重新裁剪 Ios
 ## 计算核心接口（`src/core/`）
 
 全部从 `src/core/index.ts` 导出：`import { encodeJson, messagesHttpRequest, createMessage, ... } from '../core'`。
+
+下面各节里，`sse.ts`、`tokens.ts`、`template.ts`、`anthropic.ts`、`cache.ts`、`pricing.ts`、`ids.ts` 的实现在共享包 `@explorer/llm-core` 的同名文件里（和 AGENT EXPLORER 共用），`core/` 原样转导出；接口说明仍写在这里。
 
 ### JSON（`json.ts`）
 

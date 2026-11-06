@@ -1,6 +1,6 @@
 # Explorer
 
-交互式教学主站：逐事件动画 + 逐字节解码。首页是课程入口，九门课程是主站下的模块，全部由一个服务提供。
+交互式教学主站：逐事件动画 + 逐字节解码。首页是课程入口，十门课程是主站下的模块，全部由一个服务提供。
 
 线上地址：<https://wuwenjunpr.site/explorer-monorepo/>，<https://cs-explorer.pages.dev/>
 
@@ -16,8 +16,9 @@
 | `modules/llm` | LLM EXPLORER | 大模型原理。课程里运行一个迷你 Transformer，接口见其 `README.md` | `/modules/llm/` |
 | `modules/context` | CONTEXT EXPLORER | 接口与上下文工程。逐字节解码 API 请求和响应，token、费用、缓存全部真实计算，接口见其 `README.md` | `/modules/context/` |
 | `modules/rag` | RAG EXPLORER | 嵌入与检索增强。嵌入、相似度、Flat / IVF / HNSW / PQ 索引、混合检索和评估全部真实计算，接口见其 `README.md` | `/modules/rag/` |
-| `packages/engine` | `@explorer/engine` | 除 Protocol 外八个模块共用的引擎 | |
-| `packages/llm-core` | `@explorer/llm-core` | LLM、CONTEXT、RAG 共用的计算核心：字节级 BPE 分词器、UTF-8、语料、随机数、FNV-1a、浮点位模式、BM25、JSON、HTTP/1.1 | |
+| `modules/agent` | AGENT EXPLORER | Agent 与 MCP。Agent 循环、工具执行、MCP（2026-07-28 版）的 JSON-RPC、stdio 和 Streamable HTTP 全部真实执行，接口见其 `README.md` | `/modules/agent/` |
+| `packages/engine` | `@explorer/engine` | 除 Protocol 外九个模块共用的引擎 | |
+| `packages/llm-core` | `@explorer/llm-core` | LLM、CONTEXT、RAG、AGENT 共用的计算核心：字节级 BPE 分词器、UTF-8、语料、随机数、FNV-1a、浮点位模式、BM25、JSON、HTTP/1.1、SSE、ChatML 模板和 token 计数、Messages API、提示缓存、计费、示例 id | |
 
 ## 常用命令
 
@@ -77,7 +78,7 @@ npm run mirror:protocol  # 从线上重新镜像 Protocol Explorer
 
 ## 改引擎时要注意
 
-引擎的改动会影响八个站。`stage.ts` 的默认行为不要随便动：所有动画共用一个时钟，多排一个哪怕是空的等待任务，后面动画的时间量化都会变。
+引擎的改动会影响九个站。`stage.ts` 的默认行为不要随便动：所有动画共用一个时钟，多排一个哪怕是空的等待任务，后面动画的时间量化都会变。
 
 样式层叠也要留意：`site.css` 在引擎样式之后加载，所以它和引擎里同优先级的规则冲突时会胜出，包括响应式规则。站点要改只在宽屏生效的规则时，选择器要写窄，比如 `.is-stacked:not(.is-single) .workspace`。
 

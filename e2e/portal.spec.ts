@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { mirrorUrl, rewriteMirror } from '../scripts/protocol-mirror';
+import { LESSONS as agent } from '../modules/agent/src/lessons';
 import { LESSONS as algo } from '../modules/algo/src/lessons';
 import { LESSONS as codegen } from '../modules/codegen/src/lessons';
 import { LESSONS as context } from '../modules/context/src/lessons';
@@ -11,10 +12,10 @@ import { LESSONS as llm } from '../modules/llm/src/lessons';
 import { LESSONS as os } from '../modules/os/src/lessons';
 import { LESSONS as rag } from '../modules/rag/src/lessons';
 
-const MODULES = ['protocol', 'os', 'algo', 'codegen', 'cpu', 'db', 'llm', 'context', 'rag'];
+const MODULES = ['protocol', 'os', 'algo', 'codegen', 'cpu', 'db', 'llm', 'context', 'rag', 'agent'];
 
 /** 每个模块的课数。引擎模块直接取各自的 LESSONS，加课不用改这里；Protocol 是镜像，固定 14 课。 */
-const LESSON_COUNTS: Record<string, number> = { protocol: 14, os: os.length, algo: algo.length, codegen: codegen.length, cpu: cpu.length, db: db.length, llm: llm.length, context: context.length, rag: rag.length };
+const LESSON_COUNTS: Record<string, number> = { protocol: 14, os: os.length, algo: algo.length, codegen: codegen.length, cpu: cpu.length, db: db.length, llm: llm.length, context: context.length, rag: rag.length, agent: agent.length };
 
 test('首页没有资源错误，也不横向溢出', async ({ page }) => {
   const problems: string[] = [];
@@ -76,7 +77,7 @@ test('课程可以按分类筛选', async ({ page }) => {
   await expect(page.locator('[data-filter="all"] .count')).toHaveText(String(MODULES.length));
   await expect(visible).toHaveCount(MODULES.length);
 
-  const expected: Record<string, string[]> = { system: ['cpu', 'os', 'codegen'], 'network-data': ['protocol', 'db'], algorithm: ['algo'], ai: ['llm', 'context', 'rag'] };
+  const expected: Record<string, string[]> = { system: ['cpu', 'os', 'codegen'], 'network-data': ['protocol', 'db'], algorithm: ['algo'], ai: ['llm', 'context', 'rag', 'agent'] };
   for (const [filter, modules] of Object.entries(expected)) {
     await page.click(`[data-filter="${filter}"]`);
     await expect(page.locator(`[data-filter="${filter}"]`)).toHaveAttribute('aria-pressed', 'true');

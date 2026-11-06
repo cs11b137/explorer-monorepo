@@ -47,11 +47,13 @@ export interface HttpLayout {
 /** RFC 9110 / RFC 6585 的原因短语。529 不是标准状态码，没有登记的短语。 */
 export const REASONS: Record<number, string> = {
   200: 'OK',
+  202: 'Accepted',
   400: 'Bad Request',
   401: 'Unauthorized',
   402: 'Payment Required',
   403: 'Forbidden',
   404: 'Not Found',
+  405: 'Method Not Allowed',
   408: 'Request Timeout',
   409: 'Conflict',
   413: 'Content Too Large',
