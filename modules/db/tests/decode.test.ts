@@ -9,8 +9,10 @@ import { fromHex, parseLsn, toHex } from '../src/engine/bytes';
 import { Clog } from '../src/engine/mvcc';
 import { Page, type Attr } from '../src/engine/page';
 import { parseRecord, type WalEntry } from '../src/engine/wal';
-import { btMeta, btOpaque, bufferDesc, clogBytes, heapTuple, indexTuple, lineArray, lockTagTransaction, minimalTuple, pageHeader, protocolMessage, snapshotValues, tapeTuple, xlogLayers } from '../src/decode/structures';
+import { BloomPolicy, enc, kTypeDeletion, lookupKey, MemTable, Table } from '../src/engine/lsm';
+import { btMeta, btOpaque, bufferDesc, clogBytes, dataBlockLayers, filterBlockLayers, footerLayer, heapTuple, indexBlockLayers, indexTuple, lineArray, lockTagTransaction, logRecordLayers, lookupKeyLayer, memEntryLayers, metaindexBlockLayers, minimalTuple, pageHeader, protocolMessage, snapshotValues, tapeTuple, xlogLayers } from '../src/decode/structures';
 import { decode, type LayerWriter } from '../src/decode/writer';
+import leveldbGolden from './golden/leveldb.json';
 
 const ACCOUNTS: Attr[] = [{ name: 'id', type: 'int4' }, { name: 'owner', type: 'text' }, { name: 'balance', type: 'int4' }];
 const field = (layer: LayerWriter, name: string) => {
@@ -294,5 +296,84 @@ describe('writer', () => {
     const lp = frame.fields.find((f) => f.name === '行指针 1')!;
     expect(lp.from).toBe(24);
     expect(frame.layers[1].addr).toBe(24);
+  });
+});
+
+describe('LevelDB：解码真实的 .log 和 .ldb 文件', () => {
+  const log = fromHex(leveldbGolden.log);
+  const file = fromHex(leveldbGolden.tables.l0Seq9to12);
+  const table = new Table(file);
+  const policy = new BloomPolicy(10);
+  const all = (layers: LayerWriter[]) => decode({ at: 'x', view: 'mem', fidelity: 'leveldb', layers });
+
+  it('日志记录：7 字节头（checksum、length、type）+ WriteBatch，CRC 复算一致', () => {
+    const record = { offset: 0, bytes: log.subarray(0, 33), type: 1 };
+    const [head, batch] = logRecordLayers(record);
+    expect(head.fields.map((f) => [f.name, f.from, f.to])).toEqual([['checksum', 0, 4], ['length', 4, 6], ['type', 6, 7]]);
+    expect(field(head, 'checksum').note).toContain('一致');
+    expect(field(head, 'length').value).toBe('26');
+    expect(field(head, 'type').value).toBe('1 kFullType');
+    expect(batch.addr).toBe(7);
+    expect(field(batch, 'sequence').value).toBe('9');
+    expect(field(batch, '键').value).toBe('acct:ann');
+    expect(field(batch, '值').value).toBe('120');
+  });
+
+  it('删除记录：WriteBatch 里只有类型 0 和键', () => {
+    const [, batch] = logRecordLayers({ offset: 33, bytes: log.subarray(33, 62), type: 1 });
+    expect(batch.addr).toBe(40);
+    expect(field(batch, '类型').value).toBe(`${kTypeDeletion} kTypeDeletion`);
+    expect(batch.fields.some((f) => f.name === '值')).toBe(false);
+  });
+
+  it('一个表的各层拼起来就是整个文件，地址就是文件偏移', () => {
+    const layers = [
+      ...dataBlockLayers(file, table.dataHandles()[0]),
+      ...filterBlockLayers(file, table.filterHandle, policy, [{ key: 'acct:bob', inside: false }]),
+      ...metaindexBlockLayers(file, table.footer.metaindex),
+      ...indexBlockLayers(file, table.footer.index),
+      footerLayer(file),
+    ];
+    expect(toHex(all(layers).bytes as number[])).toBe(leveldbGolden.tables.l0Seq9to12);
+    let at = 0;
+    for (const layer of layers) {
+      expect(layer.addr, layer.name).toBe(at);
+      at += layer.length;
+    }
+  });
+
+  it('数据块：前缀压缩和重启点', () => {
+    const [block, trailer] = dataBlockLayers(file, table.dataHandles()[0]);
+    const shared = block.fields.filter((f) => f.name === 'shared').map((f) => f.value);
+    expect(shared).toEqual(['0', '5', '0', '5']);
+    expect(block.fields.filter((f) => f.name.startsWith('restarts')).map((f) => f.value)).toEqual(['0', '39']);
+    expect(block.fields.find((f) => f.name === '类型 · 低 8 位' && f.value.startsWith('0'))).toBeTruthy();
+    expect(field(trailer, 'crc').note).toContain('一致');
+  });
+
+  it('过滤块：bob 有探针落在 0 上；索引块的键是 "b" 加最大序列号；footer 48 字节', () => {
+    const [filter] = filterBlockLayers(file, table.filterHandle, policy, [{ key: 'acct:bob', inside: false }]);
+    expect(field(filter, 'acct:bob 的 6 个探针').value).toContain('=0');
+    expect(field(filter, 'base_lg').value).toBe('11');
+    const [index] = indexBlockLayers(file, table.footer.index);
+    expect(field(index, 'key_delta').value).toBe('b');
+    expect(field(index, '序列号 · 高 56 位').value).toContain('2^56');
+    const footer = footerLayer(file);
+    expect(footer.length).toBe(48);
+    expect(field(footer, 'magic').value).toBe('0xdb4775248b80fb57');
+    expect(footer.addr).toBe(file.length - 48);
+  });
+
+  it('MemTable 记录：varint 键长 + 内部键 + varint 值长 + 值；跳表节点的指针不展示', () => {
+    const mem = new MemTable();
+    const entry = mem.add(9, 1, enc('acct:ann'), enc('120'));
+    const [record, node] = memEntryLayers(entry);
+    expect(record.length).toBe(1 + 16 + 1 + 3);
+    expect(field(record, 'internal_key_size').value).toBe('16');
+    expect(field(record, '序列号 · 高 56 位').value).toBe('9');
+    expect(node.length).toBe(8 + 8 * entry.height);
+    expect(node.bytes.every((b) => b === null)).toBe(true);
+    const lookup = lookupKeyLayer(lookupKey(enc('acct:bob'), 13));
+    expect(lookup.length).toBe(17);
   });
 });

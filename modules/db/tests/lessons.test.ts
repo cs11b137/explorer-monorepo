@@ -8,10 +8,10 @@ import { renderBoard } from '../src/scene/boards';
 import { NODE_SPECS } from '../src/scene/devices';
 
 describe('课程清单', () => {
-  it('共 14 课，分组是 5 / 4 / 5', () => {
-    expect(LESSONS.length).toBe(14);
+  it('共 15 课，分组是 5 / 5 / 5', () => {
+    expect(LESSONS.length).toBe(15);
     expect(LESSONS.filter((lesson) => lesson.group === 'query').length).toBe(5);
-    expect(LESSONS.filter((lesson) => lesson.group === 'storage').length).toBe(4);
+    expect(LESSONS.filter((lesson) => lesson.group === 'storage').length).toBe(5);
     expect(LESSONS.filter((lesson) => lesson.group === 'txn').length).toBe(5);
   });
 

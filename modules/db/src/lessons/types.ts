@@ -13,7 +13,8 @@ export type { Color, Fact };
 /** 轨迹表「类型」列的取值。 */
 export type TraceType =
   | 'MSG' | 'PARSE' | 'PLAN' | 'SCAN' | 'PAGE' | 'BUF' | 'IO' | 'LOCK'
-  | 'WAL' | 'FSYNC' | 'XACT' | 'HASH' | 'SORT' | 'VAC' | 'REDO';
+  | 'WAL' | 'FSYNC' | 'XACT' | 'HASH' | 'SORT' | 'VAC' | 'REDO'
+  | 'MEM' | 'SST' | 'GET' | 'MERGE';
 
 
 export interface Row {

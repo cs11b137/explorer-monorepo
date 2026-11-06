@@ -17,6 +17,8 @@ import { analyze, AnalyzeError, parseSelect, SqlSyntaxError, tokenize } from '..
 import { Ssi } from '../src/engine/ssi';
 import { commitRecord, endOfRecord, heapDeleteRecord, heapHotUpdateRecord, heapInsertRecord, parseRecord, redoOne, restoreImage, Wal, type RelLocator } from '../src/engine/wal';
 import { Clog, getSnapshot, satisfiesMVCC, scanPage, TRANSACTION_STATUS_COMMITTED, xidInSnapshot } from '../src/engine/mvcc';
+import leveldbGolden from './golden/leveldb.json';
+import { BloomPolicy, buildTable, enc, getVarint, internalKey, kTypeDeletion, kTypeValue, LevelRandom, levelHash, LogWriter, LsmDb, maskCrc, parseFooter, parseInternalKey, shortestSeparator, shortSuccessor, str, Table, TABLE_MAGIC, unmaskCrc, varintBytes, batchRep } from '../src/engine/lsm';
 
 const ACCOUNTS: Attr[] = [{ name: 'id', type: 'int4' }, { name: 'owner', type: 'text' }, { name: 'balance', type: 'int4' }];
 
@@ -446,5 +448,158 @@ describe('SSI', () => {
     ssi.write(2, 'r');
     expect(ssi.commit(2).ok).toBe(true);
     expect(ssi.commit(1).ok).toBe(true);
+  });
+});
+
+describe('LSM：和 LevelDB 1.23 写出的文件逐字节一致', () => {
+  const g = leveldbGolden;
+  const OPTIONS = { blockSize: 4096, restartInterval: 2, bitsPerKey: 10, memEntries: 4, l0Trigger: 2 };
+  const rows = (list: Array<[number, number, string, string]>) => list.map(([seq, type, key, value]) => ({ seq, type, key, value }));
+  const SEQ1TO4 = rows([[1, kTypeValue, 'acct:ann', '100'], [2, kTypeValue, 'acct:bob', '200'], [3, kTypeValue, 'acct:cat', '300'], [4, kTypeValue, 'acct:dan', '400']]);
+  const SEQ5TO8 = rows([[5, kTypeValue, 'acct:cat', '310'], [6, kTypeValue, 'acct:eve', '500'], [7, kTypeValue, 'acct:gus', '700'], [8, kTypeValue, 'acct:hal', '800']]);
+
+  /** 和生成程序相同的状态：L1 有序列号 1–4，L0 有 5–8，日志 12 是新的。 */
+  function scenario(): LsmDb {
+    const db = new LsmDb(OPTIONS, 12);
+    db.install(1, 9, SEQ1TO4);
+    db.install(0, 11, SEQ5TO8);
+    return db;
+  }
+
+  it('Hash：LevelDB hash_test.cc 的向量，包括高位字节（有符号 char 的老问题）', () => {
+    const seed = 0xbc9f1d34;
+    expect(levelHash([], seed)).toBe(0xbc9f1d34);
+    expect(levelHash([0x62], seed)).toBe(0xef1345c4);
+    expect(levelHash([0xc3, 0x97], seed)).toBe(0x5b663814);
+    expect(levelHash([0xe2, 0x99, 0xa5], seed)).toBe(0x323c078f);
+    expect(levelHash([0xe1, 0x80, 0xb9, 0x32], seed)).toBe(0xed21633a);
+    const data5 = [0x01, 0xc0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x14, 0, 0, 0, 0, 0, 0x04, 0, 0, 0, 0, 0x14, 0, 0, 0, 0x18, 0x28, 0, 0, 0, 0, 0, 0, 0, 0x02, 0, 0, 0, 0, 0, 0, 0];
+    expect(levelHash(data5, 0x12345678)).toBe(0xf333dabb);
+    for (const [key, h] of Object.entries(g.bloomHash)) expect(levelHash(enc(key), seed), key).toBe(h);
+  });
+
+  it('varint：每字节 7 位，低位在前，最高位表示后面还有', () => {
+    expect(varintBytes(0)).toEqual([0]);
+    expect(varintBytes(127)).toEqual([0x7f]);
+    expect(varintBytes(128)).toEqual([0x80, 0x01]);
+    expect(varintBytes(300)).toEqual([0xac, 0x02]);
+    expect(getVarint([0xac, 0x02], 0)).toEqual({ value: 300, next: 2 });
+  });
+
+  it('CRC 掩码可以还原', () => {
+    for (const crc of [0, 1, 0xe3069283, 0xffffffff]) expect(unmaskCrc(maskCrc(crc))).toBe(crc);
+  });
+
+  it('跳表高度：Random(0xdeadbeef) 的前 24 次和真实 SkipList 一致', () => {
+    const rnd = new LevelRandom(0xdeadbeef);
+    const heights = g.skiplistHeights.map(() => {
+      let h = 1;
+      while (h < 12 && rnd.next() % 4 === 0) h++;
+      return h;
+    });
+    expect(heights).toEqual(g.skiplistHeights);
+  });
+
+  it('日志：4 次写入就是 000012.log 的全部字节（含掩码 CRC）', () => {
+    const db = scenario();
+    db.put('acct:ann', '120');
+    db.delete('acct:dan');
+    db.put('acct:fay', '600');
+    db.put('acct:cat', '330');
+    expect(db.log.number).toBe(g.fileNumbers.log);
+    expect(toHex(db.log.bytes)).toBe(g.log);
+  });
+
+  it('长记录跨 32 KiB 块时切成 FIRST / MIDDLE / LAST', () => {
+    const log = new LogWriter(1);
+    const parts = log.addRecord(new Uint8Array(70000));
+    expect(parts.map((p) => p.type)).toEqual([2, 3, 4]);
+    expect(parts[1].offset).toBe(32768);
+  });
+
+  it('SSTable：课程开始前的 L1、L0 文件，刷盘得到的文件，合并得到的文件', () => {
+    const db = scenario();
+    expect(toHex(db.levels[1][0].table.bytes)).toBe(g.tables.l1Seq1to4);
+    expect(toHex(db.levels[0][0].table.bytes)).toBe(g.tables.l0Seq5to8);
+    db.put('acct:ann', '120');
+    db.delete('acct:dan');
+    db.put('acct:fay', '600');
+    db.put('acct:cat', '330');
+    const w = db.put('acct:ivy', '900');
+    expect(w.switched).toEqual({ frozenLog: 12, newLog: 13 });
+    const flushed = db.flush();
+    expect(flushed.file.number).toBe(g.fileNumbers.l0Seq9to12);
+    expect(flushed.file.level).toBe(0);
+    expect(toHex(flushed.file.table.bytes)).toBe(g.tables.l0Seq9to12);
+    expect(db.needsCompaction()).toBe(true);
+    const c = db.compact();
+    expect(c.outputs.length).toBe(1);
+    expect(toHex(c.outputs[0].table.bytes)).toBe(g.tables.compacted);
+    expect(c.deleted.map(([, n]) => n).sort((a, b) => a - b)).toEqual([9, 11, 14]);
+    expect(g.levelsAfterCompaction).toContain("'acct:ann' @ 9 : 1 .. 'acct:hal' @ 8 : 1");
+  });
+
+  it('合并：同一个键只留最新版本，墓碑在最底层被丢掉', () => {
+    const db = scenario();
+    db.put('acct:ann', '120');
+    db.delete('acct:dan');
+    db.put('acct:fay', '600');
+    db.put('acct:cat', '330');
+    db.put('acct:ivy', '900');
+    db.flush();
+    const c = db.compact();
+    const text = c.rows.map((r) => { const k = parseInternalKey(r.ikey); return `${str(k.user).slice(5)}@${k.seq}:${r.drop ?? 'keep'}`; });
+    expect(text).toEqual(['ann@9:keep', 'ann@1:shadowed', 'bob@2:keep', 'cat@12:keep', 'cat@5:shadowed', 'cat@3:shadowed', 'dan@10:tombstone', 'dan@4:shadowed', 'eve@6:keep', 'fay@11:keep', 'gus@7:keep', 'hal@8:keep']);
+  });
+
+  it('读路径：和真实 Get 结果一致；bob 被 L0 的布隆过滤器挡掉，dan 碰到墓碑就停', () => {
+    const db = scenario();
+    db.put('acct:ann', '120');
+    db.delete('acct:dan');
+    db.put('acct:fay', '600');
+    db.put('acct:cat', '330');
+    db.put('acct:ivy', '900');
+    db.flush();
+    const bob = db.get('acct:bob');
+    expect(str(bob.value!)).toBe(g.get['acct:bob']);
+    expect(bob.steps.map((s) => `${s.where}:${s.result}`)).toEqual(['MemTable:miss', 'L0 #14:filter', 'L0 #11:range', 'L1 #9:found']);
+    const dan = db.get('acct:dan');
+    expect(dan.value).toBeNull();
+    expect(g.get['acct:dan']).toContain('NotFound');
+    expect(dan.steps.map((s) => `${s.where}:${s.result}`)).toEqual(['MemTable:miss', 'L0 #14:deleted']);
+  });
+
+  it('布隆过滤器：放进去的键一定命中；k = 10 × 0.69 取整 = 6', () => {
+    const policy = new BloomPolicy(10);
+    expect(policy.k).toBe(6);
+    const keys = ['hello', 'world', 'acct:ann', 'acct:fay'].map(enc);
+    const filter = policy.create(keys);
+    expect(filter.length).toBe(9);
+    for (const key of keys) expect(policy.mayMatch(key, filter)).toBe(true);
+  });
+
+  it('分隔键和后继：能缩短才缩短，并配上最大序列号', () => {
+    const k = (user: string, seq: number) => internalKey(enc(user), seq, kTypeValue);
+    expect(str(shortestSeparator(k('acct:dan', 10), k('acct:fay', 11)).subarray(0, 6))).toBe('acct:e');
+    expect(shortestSeparator(k('acct:cat', 3), k('acct:dan', 4))).toEqual(k('acct:cat', 3));
+    const succ = shortSuccessor(k('acct:fay', 11));
+    expect(str(succ.subarray(0, 1))).toBe('b');
+    expect(parseInternalKey(succ).seq).toBe((1n << 56n) - 1n);
+  });
+
+  it('footer：48 字节，magic 0xdb4775248b80fb57；独立写表也得到同样字节', () => {
+    const table = new Table(fromHex(g.tables.l0Seq9to12));
+    const footer = parseFooter(table.bytes);
+    expect(footer.magic).toBe(TABLE_MAGIC);
+    expect(toHex(table.bytes.subarray(table.bytes.length - 8))).toBe('57fb808b247547db');
+    expect(footer.index.offset + footer.index.size + 5).toBe(table.bytes.length - 48);
+    const entries = table.entries().map((e) => ({ ikey: e.key, value: e.value }));
+    expect(toHex(buildTable(entries, OPTIONS).bytes)).toBe(g.tables.l0Seq9to12);
+    expect(entries.map((e) => parseInternalKey(e.ikey).type)).toEqual([kTypeValue, kTypeValue, kTypeDeletion, kTypeValue]);
+  });
+
+  it('WriteBatch：8 字节序列号 + 4 字节条数 + 类型、键、值', () => {
+    const rep = batchRep(9, [{ type: kTypeValue, key: enc('acct:ann'), value: enc('120') }]);
+    expect(toHex(rep)).toBe('0900000000000000010000000108616363743a616e6e03313230');
   });
 });
