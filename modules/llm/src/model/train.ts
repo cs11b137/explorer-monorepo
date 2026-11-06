@@ -4,9 +4,9 @@
  *
  * backward 手写了每个算子的导数，tests/model.test.ts 用有限差分逐个参数核对。
  */
-import { CORPUS } from './corpus';
+import { CORPUS } from '@explorer/llm-core/corpus';
 import { addOuter, matTvec, sigmoid, siluGrad, type Mat, type Vec } from './tensor';
-import { type BpeTokenizer } from './tokenizer';
+import { type BpeTokenizer } from '@explorer/llm-core/tokenizer';
 import { emptyGrads, forward, initWeights, LAYER_TENSORS, makeConfig, rope, sequenceLoss, type ForwardTrace, type LayerWeights, type Weights } from './transformer';
 
 /** RMSNorm 的反向：dx = (dx̂ − x̂ · mean(dx̂ ⊙ x̂)) / rms，其中 x̂ = x / rms，dx̂ = dy ⊙ γ。同时累加 dγ。 */

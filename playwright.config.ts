@@ -4,7 +4,7 @@ const PORT = 5199;
 // 默认按线上的子路径测试。本地根路径可以用 BASE_PATH=/ 再测一遍。
 const BASE = process.env.BASE_PATH ?? '/explorer-monorepo/';
 const ORIGIN = `http://localhost:${PORT}${BASE}`;
-const MODULES = ['protocol', 'os', 'algo', 'codegen', 'cpu', 'db', 'llm'];
+const MODULES = ['protocol', 'os', 'algo', 'codegen', 'cpu', 'db', 'llm', 'context'];
 
 export default defineConfig({
   timeout: 240_000,

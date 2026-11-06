@@ -5,7 +5,7 @@
  */
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { TOKENIZER } from '../src/model/tokenizer';
+import { TOKENIZER } from '@explorer/llm-core/tokenizer';
 import { PRETRAIN, trainFromScratch } from '../src/model/train';
 import { serializeWeights } from '../src/model/weights';
 

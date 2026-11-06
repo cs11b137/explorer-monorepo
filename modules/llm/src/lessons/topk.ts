@@ -4,7 +4,7 @@
  * 文案里的数字全部取自下面导出的计算结果，tests/narrative.sample.test.ts 核对。
  */
 import { rawBytes, tokenIds, utf8Text, wire } from '../decode/structures';
-import { TOKENIZER } from '../model/tokenizer';
+import { TOKENIZER } from '@explorer/llm-core/tokenizer';
 import { cellsOf, num, pct, shortLabel } from './common';
 import { note, pk, render, show, state, type } from './dsl';
 import { colLabels, heatOf, labelBelow, sampledRun, tokenDataLayer, vocabFloats } from './sample-common';

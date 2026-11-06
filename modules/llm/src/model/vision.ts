@@ -9,7 +9,7 @@
  * Fuyu 正是把 patch 线性投影后直接送进解码器。LLaVA、Qwen-VL 等在中间还有一个完整的视觉编码器和一个投影层，
  * 本站为了能逐个数字展示，省掉了视觉编码器。投影权重来自固定种子，没有训练，所以向量本身没有语义。
  */
-import { gaussian, mulberry32 } from './prng';
+import { gaussian, mulberry32 } from '@explorer/llm-core/prng';
 import { FP32, FlopMeter, matvec, type Mat, type Vec } from './tensor';
 import { NO_TOKEN, type InputVector } from './transformer';
 

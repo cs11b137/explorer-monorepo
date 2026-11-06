@@ -239,12 +239,12 @@ export const prefix: Lesson = {
     {
       title: 'API 为什么按缓存打折',
       desc: `命中的 ${runB.reused} 个 token 不再做前向`,
-      detail: `API 层的 Prompt Caching 是同一件事：命中缓存的输入 token 跳过了预填充，服务方省下了算力，所以按折扣计费。以 Anthropic 为例，读缓存约为基础输入价的 0.1 倍，写缓存约 1.25 倍，缓存默认保留 5 分钟；代价是这段 K、V 要一直占着显存或内存。各家服务内部怎么切块没有公开，但规则和这里一样：只认完全相同的前缀，所以要把固定的系统提示放在最前面，把会变的内容放到后面。`,
+      detail: `API 层的 Prompt Caching 是同一件事：命中缓存的输入 token 跳过了预填充，服务方省下了算力，所以按折扣计费。以 Anthropic 为例，读缓存约为基础输入价的 0.1 倍（Opus 5.5、Sonnet 5.5 更低，是 0.05 倍），写缓存约 1.25 倍，缓存默认保留 5 分钟；代价是这段 K、V 要一直占着显存或内存。各家服务内部怎么切块没有公开，但规则和这里一样：只认完全相同的前缀，所以要把固定的系统提示放在最前面，把会变的内容放到后面。`,
       facts: [['B 复用', `${runB.reused} / ${ids.B.length} 个 token`], ['B 省下', `${fullB - runB.flops} FLOPs（${Math.round(savedShare * 100)}%）`], ['计费（Anthropic）', '读缓存 ×0.1 · 写缓存 ×1.25']],
       events: [
         pk('server', 'client', 'green', 'usage', [`读缓存 ${runB.reused}`, `写缓存 ${runB.inserted.length * BLOCK}`, `其余 ${runB.computed - runB.inserted.length * BLOCK}`], [runC.total, 'HTTP', `B 的输入 ${ids.B.length} 个 token：${runB.reused} 个读自缓存，${runB.computed} 个重新计算`, null],
           wire('响应里的用量（以 Anthropic API 的 usage 字段为例）', 'vals', '示意', conceptOf('usage', [
-            ['cache_read_input_tokens', String(runB.reused), '命中缓存的前缀，按约 0.1 倍输入价计费。'],
+            ['cache_read_input_tokens', String(runB.reused), '命中缓存的前缀，按约 0.1 倍输入价计费（部分模型更低）。'],
             ['cache_creation_input_tokens', String(runB.inserted.length * BLOCK), `B 新登记的块 ${runB.missAt}，写入按约 1.25 倍输入价计费。`],
             ['input_tokens', String(runB.computed - runB.inserted.length * BLOCK), '末尾不满一块、没进缓存的部分，按正常输入价计费。'],
           ], 'green', '迷你模型的数字套进真实 API 的字段名，只为说明对应关系')),

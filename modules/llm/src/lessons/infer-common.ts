@@ -5,7 +5,7 @@
 import { num } from '../decode/structures';
 import { hex, LayerWriter, type Fidelity } from '../decode/writer';
 import { f16Bits, f16FromBits, i32Bytes } from '../model/numeric';
-import { TOKENIZER } from '../model/tokenizer';
+import { TOKENIZER } from '@explorer/llm-core/tokenizer';
 import type { KVCache } from '../model/transformer';
 import { u64Bytes, fullHash, type BlockKey } from '../engine/prefix';
 import type { Color } from './types';

@@ -10,7 +10,7 @@
     python scripts/subset-fonts.py <解压出的 woff2 目录>
 
 字符集 = 可打印 ASCII
-       + 本模块源码、index.html 和引擎界面源码里出现的所有非中日韩字符
+       + 本模块源码、index.html、引擎界面源码和共享包 llm-core 里出现的所有非中日韩字符
        + 运行时才生成的字符：GPT-2 字节映射用到的 U+00A1–U+0143（tokenizer.json 的写法），
          以及后续课程可能用到的数学符号（EXTRA）。
 中文走系统字体，不进子集。课程里加了新符号，重新运行一次。
@@ -23,6 +23,7 @@ from fontTools import subset
 
 ROOT = Path(__file__).resolve().parents[1]
 ENGINE = ROOT.parents[1] / 'packages' / 'engine' / 'src'
+CORE = ROOT.parents[1] / 'packages' / 'llm-core' / 'src'
 OUT = ROOT / 'src' / 'assets' / 'fonts'
 
 WEIGHTS = {
@@ -47,7 +48,7 @@ def collect() -> set[str]:
     chars = {chr(cp) for cp in range(0x20, 0x7F)}
     chars |= {chr(cp) for cp in range(0xA1, 0x144)}
     chars |= set(EXTRA)
-    files = [*ROOT.joinpath('src').rglob('*.ts'), ROOT / 'index.html', *ENGINE.rglob('*.ts')]
+    files = [*ROOT.joinpath('src').rglob('*.ts'), ROOT / 'index.html', *ENGINE.rglob('*.ts'), *CORE.rglob('*.ts')]
     for path in files:
         if path.name == 'weights.data.ts':
             continue

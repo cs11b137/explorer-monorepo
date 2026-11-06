@@ -4,8 +4,8 @@
  */
 import { rawBytes, tokenIds, utf8Text, wire } from '../decode/structures';
 import { choiceConstraint, prefixMask, sample } from '../model/sample';
-import { TOKENIZER } from '../model/tokenizer';
-import { utf8Decode, utf8Encode } from '../model/utf8';
+import { TOKENIZER } from '@explorer/llm-core/tokenizer';
+import { utf8Decode, utf8Encode } from '@explorer/llm-core/utf8';
 import { num, pct, shortLabel } from './common';
 import { note, pk, render, show, state, type } from './dsl';
 import { heatOf, labelBelow, promptLogits, sampledRun, vocabFloats } from './sample-common';

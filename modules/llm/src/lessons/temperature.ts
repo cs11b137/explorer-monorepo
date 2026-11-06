@@ -4,10 +4,10 @@
  */
 import { rawBytes, tokenIds, utf8Text, wire, floatVector } from '../decode/structures';
 import { MODEL } from '../model';
-import { mulberry32 } from '../model/prng';
+import { mulberry32 } from '@explorer/llm-core/prng';
 import { sample } from '../model/sample';
 import { forward } from '../model/transformer';
-import { TOKENIZER } from '../model/tokenizer';
+import { TOKENIZER } from '@explorer/llm-core/tokenizer';
 import { colLabels, entropyBits, heatOf, labelBelow, promptLogits, sampledRun, vocabFloats } from './sample-common';
 import { cellsOf, num, pct, shortLabel } from './common';
 import { note, pk, render, show, state, type } from './dsl';

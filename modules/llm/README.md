@@ -17,7 +17,7 @@ python scripts/subset-fonts.py <woff2 目录>  # 按本站字符重新裁剪 Ios
 
 ## 结构
 
-- `src/model/`：计算核心，纯 TypeScript，确定性（随机数全部来自固定种子）。接口见下文。
+- `src/model/`：计算核心，纯 TypeScript，确定性（随机数全部来自固定种子）。接口见下文。分词器、UTF-8、语料、随机数和 FNV-1a 在共享包 `packages/llm-core`（`@explorer/llm-core`），和 CONTEXT EXPLORER 共用，`src/model/index.ts` 一并导出。
 - `src/lessons/`：每节课一个文件。`index.ts` 的 `PLANNED` 是 15 节课的顺序和分组；`types.ts` 是节点、事件和图元的类型；`dsl.ts` 是写事件的简写；`common.ts` 是画格子的小工具。
 - `src/engine/`：推理组课程用的引擎模拟（roofline 账本、前缀缓存、分页与调度）。接口见下文。
 - `src/decode/`：可信度（`writer.ts`）和按真实格式写字节的层（`structures.ts`）。
@@ -86,14 +86,14 @@ python scripts/subset-fonts.py <woff2 目录>  # 按本站字符重新裁剪 Ios
 | `WEIGHTS_FILE: WeightsFile` | 权重文件内容，含训练配方 `train` 和损失日志 `train.logs` |
 | `CORPUS: readonly string[]`、`NUM_MERGES`、`EOS_TEXT` | 内置语料（18 篇，英文多中文少）、合并数、结束符的显示文字 `<|end|>` |
 
-### 随机数（`prng.ts`）
+### 随机数（`@explorer/llm-core/prng`）
 
 | 签名 | 说明 |
 |---|---|
 | `mulberry32(seed: number): () => number` | 固定种子的 [0, 1) 均匀分布。全站不用 `Math.random` |
 | `gaussian(rand: () => number): () => number` | 用同一个源的标准正态分布（Box–Muller） |
 
-### UTF-8（`utf8.ts`）
+### UTF-8（`@explorer/llm-core/utf8`）
 
 | 签名 | 说明 |
 |---|---|
@@ -104,7 +104,9 @@ python scripts/subset-fonts.py <woff2 目录>  # 按本站字符重新裁剪 Ios
 | `class Utf8Stream { pending: number[]; push(bytes): string; flush(): string }` | 流式解码：只吐出收齐的字符，半个字符先存着（流式输出课） |
 | `hex2(byte): string` | 两位大写十六进制 |
 
-### 分词器（`tokenizer.ts`）
+### 分词器（`@explorer/llm-core/tokenizer`）
+
+语料在 `@explorer/llm-core/corpus`。CONTEXT EXPLORER 用同一个 `TOKENIZER` 数 token，所以改语料或合并数会同时改变两门课的数字。
 
 | 签名 | 说明 |
 |---|---|
@@ -234,7 +236,7 @@ python scripts/subset-fonts.py <woff2 目录>  # 按本站字符重新裁剪 Ios
 
 | 签名 | 说明 |
 |---|---|
-| `fnv1a64(bytes: readonly number[]): bigint` | 64 位 FNV-1a |
+| `fnv1a64(bytes: readonly number[]): bigint` | 64 位 FNV-1a（实现在 `@explorer/llm-core/hash`，这里转导出） |
 | `u64Bytes(value: bigint): number[]`、`ROOT_HASH: bigint` | u64 小端字节；没有父块时用的哈希（0n） |
 | `interface BlockKey { index; tokens; parent; hash; bytes }` | 一个满块的逻辑块号、token、父哈希、自己的哈希，以及参与哈希的字节 |
 | `blockHash(parent: bigint, tokens: readonly number[]): { hash; bytes }` | 一块的哈希：父哈希的 u64 小端字节加上每个 token 的 int32 小端字节 |

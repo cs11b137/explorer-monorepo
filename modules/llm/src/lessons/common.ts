@@ -2,7 +2,7 @@
  * 各课共用的小工具：把数组变成图元格子、token 的配色、数值格式。
  * 课程里的数字一律从 model/ 的计算结果取，这里只负责「怎么画」。
  */
-import { TOKENIZER } from '../model/tokenizer';
+import { TOKENIZER } from '@explorer/llm-core/tokenizer';
 import type { Color, DsCell, Tone } from './types';
 
 export { num } from '../decode/structures';

@@ -10,9 +10,9 @@
 import { describe, expect, it } from 'vitest';
 import { LESSON_BY_ID } from '../src/lessons';
 import { bpeRun, corpusStats, crossBoundary, INPUT, nonAsciiMerges, widestCross } from '../src/lessons/bpe';
-import { CORPUS } from '../src/model/corpus';
-import { TOKENIZER } from '../src/model/tokenizer';
-import { utf8Encode } from '../src/model/utf8';
+import { CORPUS } from '@explorer/llm-core/corpus';
+import { TOKENIZER } from '@explorer/llm-core/tokenizer';
+import { utf8Encode } from '@explorer/llm-core/utf8';
 
 const factsOf = (id: string, step: number) => Object.fromEntries(LESSON_BY_ID[id].steps[step].facts);
 const stepOf = (id: string, step: number) => LESSON_BY_ID[id].steps[step];

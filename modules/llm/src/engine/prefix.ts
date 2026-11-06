@@ -9,23 +9,13 @@
  * 真实引擎的哈希函数可以配置（vLLM 有内置 hash 和 SHA-256 两类），这里用 64 位 FNV-1a 代替：
  * 链式结构和命中规则相同，哈希值本身不同，所以检查器里标 internal。
  */
+import { fnv1a64, u64Bytes } from '@explorer/llm-core/hash';
 import { i32Bytes } from '../model/numeric';
 import { FlopMeter, type Vec } from '../model/tensor';
 import { forward, KVCache, type ForwardTrace, type Weights } from '../model/transformer';
 
-const FNV_OFFSET = 0xcbf29ce484222325n;
-const FNV_PRIME = 0x100000001b3n;
-const MASK = (1n << 64n) - 1n;
-
-/** 64 位 FNV-1a。 */
-export function fnv1a64(bytes: readonly number[]): bigint {
-  let hash = FNV_OFFSET;
-  for (const byte of bytes) hash = ((hash ^ BigInt(byte & 0xff)) * FNV_PRIME) & MASK;
-  return hash;
-}
-
-/** u64 小端字节。 */
-export const u64Bytes = (value: bigint): number[] => Array.from({ length: 8 }, (_, i) => Number((value >> BigInt(i * 8)) & 0xffn));
+/** 64 位 FNV-1a 和 u64 小端字节，在共享包 @explorer/llm-core/hash 里（context 的提示缓存模拟也用）。 */
+export { fnv1a64, u64Bytes };
 
 /** 没有父块时用的哈希。 */
 export const ROOT_HASH = 0n;

@@ -11,7 +11,7 @@
  * - 增量解码 = 每次只处理 1 个新 token，attention 读 cache 里之前的 K、V。
  * 三者对每个 (位置, 被看的位置) 做的运算完全相同，所以结果逐位一致（tests/model.test.ts 核对）。
  */
-import { gaussian, mulberry32 } from './prng';
+import { gaussian, mulberry32 } from '@explorer/llm-core/prng';
 import { add, argmax, FP32, FP64, FlopMeter, matvec, mul, rmsnorm, silu, softmax, zerosMat, type Mat, type Round, type Vec } from './tensor';
 
 export interface ModelConfig {

@@ -6,8 +6,8 @@
  * 所有随机数来自调用方传入的 rand（用 prng.ts 的固定种子），同样的种子总是抽到同一个 token。
  */
 import { softmax, type Vec } from './tensor';
-import { type BpeTokenizer } from './tokenizer';
-import { utf8Encode } from './utf8';
+import { type BpeTokenizer } from '@explorer/llm-core/tokenizer';
+import { utf8Encode } from '@explorer/llm-core/utf8';
 
 export interface SampleOptions {
   /** 0 表示贪心（直接取最大），默认 1。 */

@@ -158,7 +158,7 @@ describe('前缀缓存', () => {
 
   it('API 的计费说法', () => {
     const text = stepOf('prefix', 4).detail;
-    expect(text).toContain('读缓存约为基础输入价的 0.1 倍，写缓存约 1.25 倍');
+    expect(text).toContain('读缓存约为基础输入价的 0.1 倍（Opus 5.5、Sonnet 5.5 更低，是 0.05 倍），写缓存约 1.25 倍');
     expect(text).toContain('默认保留 5 分钟');
   });
 });

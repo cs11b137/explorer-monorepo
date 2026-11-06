@@ -9,7 +9,7 @@ import { archOf, forwardFlops, H100, kvBytesPerToken, LLAMA3_8B, miniKvBytesPerT
 import { MODEL, TOKENIZER } from '../src/model';
 import { FlopMeter } from '../src/model/tensor';
 import { decodeStep, forward, generate, KVCache, lastLogits, paramCount } from '../src/model/transformer';
-import { utf8Encode } from '../src/model/utf8';
+import { utf8Encode } from '@explorer/llm-core/utf8';
 
 const W = MODEL;
 const C = W.config;

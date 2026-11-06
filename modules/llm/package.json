@@ -9,6 +9,7 @@
     "train": "vite-node scripts/train.ts"
   },
   "dependencies": {
-    "@explorer/engine": "*"
+    "@explorer/engine": "*",
+    "@explorer/llm-core": "*"
   }
 }

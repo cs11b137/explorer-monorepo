@@ -1,0 +1,10 @@
+{
+  "name": "Context Explorer · 看懂一次模型调用带了什么",
+  "short_name": "Context Explorer",
+  "lang": "zh-CN",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#fdfdfe",
+  "theme_color": "#003ca8",
+  "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

@@ -4,7 +4,7 @@
  */
 import type { Color } from '../lessons/types';
 import { bf16Bits, bf16FromBits, f16Bits, f16FromBits, f32Bits, type Q4Block, type Q8Block } from '../model/numeric';
-import { hex2, utf8Chars, utf8Kind } from '../model/utf8';
+import { hex2, utf8Chars, utf8Kind } from '@explorer/llm-core/utf8';
 import { hex, LayerWriter, type Fidelity, type Wire } from './writer';
 
 export const wire = (at: string, view: Wire['view'], fidelity: Fidelity, ...layers: LayerWriter[]): Wire => ({ at, view, fidelity, layers });

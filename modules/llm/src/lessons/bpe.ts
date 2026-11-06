@@ -3,9 +3,9 @@
  * 文案里的数字全部取自 bpeRun 和下面的统计，tests/narrative.test.ts 核对。
  */
 import { rawBytes, tokenIds, utf8Text, wire } from '../decode/structures';
-import { CORPUS } from '../model/corpus';
-import { mergeEntry, TOKENIZER, type MergeApplication } from '../model/tokenizer';
-import { hex2, utf8Chars, utf8Encode } from '../model/utf8';
+import { CORPUS } from '@explorer/llm-core/corpus';
+import { mergeEntry, TOKENIZER, type MergeApplication } from '@explorer/llm-core/tokenizer';
+import { hex2, utf8Chars, utf8Encode } from '@explorer/llm-core/utf8';
 import { cellsOf, shortLabel } from './common';
 import { note, pk, show, state, type, render } from './dsl';
 import type { DsCell, DsFrame, GridPrim, Lesson, LessonEvent, RowPrim, Tone } from './types';

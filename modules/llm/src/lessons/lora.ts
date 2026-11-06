@@ -4,9 +4,9 @@
  * 文案里的数字全部取自下面导出的计算结果，tests/narrative.sample.test.ts 核对。
  */
 import { floatMatrix, floatVector, tokenIds, wire } from '../decode/structures';
-import { gaussian, mulberry32 } from '../model/prng';
+import { gaussian, mulberry32 } from '@explorer/llm-core/prng';
 import { FlopMeter, type Mat, type Vec } from '../model/tensor';
-import { TOKENIZER } from '../model/tokenizer';
+import { TOKENIZER } from '@explorer/llm-core/tokenizer';
 import { crossEntropy, forward, generate, paramCount, sequenceLoss, type Weights } from '../model/transformer';
 import { MODEL } from '../model';
 import { backward, cloneWeights, eachTensor, loraGrads, loraMerge, sgdStep } from '../model/train';

@@ -5,8 +5,8 @@
  */
 import { tokenIds, utf8Text, wire } from '../decode/structures';
 import { LayerWriter } from '../decode/writer';
-import { TOKENIZER } from '../model/tokenizer';
-import { hex2, utf8Decode, utf8Encode, Utf8Stream } from '../model/utf8';
+import { TOKENIZER } from '@explorer/llm-core/tokenizer';
+import { hex2, utf8Decode, utf8Encode, Utf8Stream } from '@explorer/llm-core/utf8';
 import { shortLabel } from './common';
 import { note, pk, render, show, state, type } from './dsl';
 import { labelBelow, sampledRun } from './sample-common';

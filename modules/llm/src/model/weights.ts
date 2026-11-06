@@ -4,7 +4,7 @@
  * data 是全部张量首尾相连的字节（这里用 base64 存进 JSON，方便打包）。
  */
 import { f32Bits, f32FromBits } from './numeric';
-import { type BpeTokenizer } from './tokenizer';
+import { type BpeTokenizer } from '@explorer/llm-core/tokenizer';
 import { type Mat, type Vec } from './tensor';
 import { LAYER_TENSORS, makeConfig, type LayerWeights, type Weights } from './transformer';
 
