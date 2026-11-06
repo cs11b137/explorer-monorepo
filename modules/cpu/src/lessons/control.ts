@@ -30,7 +30,7 @@ const CLASSES: ClassRow[] = [
 ];
 
 const flag = (value: boolean, active: boolean): CellLike => (value ? (active ? on('1', 'green') : cell('1', 'green')) : active ? '0' : dim('0'));
-const wbText = (c: Control) => ({ alu: 'ALU', mem: '内存', 'pc+4': 'PC+4', none: '—' })[c.wbSrc];
+const wbText = (c: Control) => ({ alu: 'ALU', mem: '内存', 'pc+4': 'PC+4', csr: 'CSR', none: '—' })[c.wbSrc];
 
 function truthTable(active: string | null) {
   return grid('主控制器真值表（只看 opcode）', [['指令', 56], ['opcode', 62], ['RegWrite', 60], ['ALUSrc', 50], ['MemRead', 56], ['MemWrite', 60], ['Branch', 50], ['Jump', 40], ['写回来自', 58], ['ALUOp', 44]],

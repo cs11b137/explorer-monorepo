@@ -7,12 +7,14 @@ import { datapath } from './datapath';
 import { dmaLesson } from './dma';
 import { dramLesson } from './dram';
 import { encoding } from './encoding';
+import { exception } from './exception';
 import { float } from './float';
 import { hazard } from './hazard';
 import { integer } from './integer';
+import { multiply } from './multiply';
 import { pipelineLesson } from './pipeline';
 import type { Lesson } from './types';
 import { writepolicy } from './writepolicy';
 
-export const LESSONS: Lesson[] = [integer, float, aluLesson, encoding, datapath, control, pipelineLesson, hazard, branch, cacheLesson, writepolicy, coherence, dramLesson, dmaLesson];
+export const LESSONS: Lesson[] = [integer, multiply, float, aluLesson, encoding, datapath, control, pipelineLesson, hazard, branch, exception, cacheLesson, writepolicy, coherence, dramLesson, dmaLesson];
 export const LESSON_BY_ID: Record<string, Lesson> = Object.fromEntries(LESSONS.map((lesson) => [lesson.id, lesson]));

@@ -6,7 +6,7 @@ export type { BitWord, Byte, DecodedLayer, Field, FieldOptions } from '@explorer
 export type Fidelity = 'spec' | 'model' | '示意';
 
 export const FIDELITY_TEXT: Record<Fidelity, string> = {
-  spec: '规范固定：位布局由 RISC-V 非特权规范或 IEEE 754 规定',
+  spec: '规范固定：位布局由 RISC-V 规范（非特权卷、特权卷）或 IEEE 754 规定',
   model: '教学模型：参数是示例，数值由模拟器算出，真实芯片各不相同',
   示意: '示意：只讲概念，不是真实的位布局',
 };

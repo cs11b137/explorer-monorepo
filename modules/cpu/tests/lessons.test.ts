@@ -5,14 +5,22 @@ import { LESSONS } from '../src/lessons';
 import { foldProbes, foldStates, NODE_IDS, packetsOf, type Lesson, type NodeId } from '../src/lessons/types';
 import { NODE_SPECS } from '../src/scene/devices';
 import { panelBoxes, type PanelBox } from '../src/scene/panels';
-import { panelWidgets, widgetSize, type KvWidget } from '../src/scene/widgets';
+import { panelWidgets, widgetSize, type BitsWidget, type GridWidget, type KvWidget } from '../src/scene/widgets';
 
 describe('课程清单', () => {
-  it('共 14 课，分组是 3 / 6 / 5，顺序和任务书一致', () => {
-    expect(LESSONS.map((lesson) => lesson.name)).toEqual(['INTEGER', 'FLOAT', 'ALU', 'ENCODING', 'DATAPATH', 'CONTROL', 'PIPELINE', 'HAZARD', 'BRANCH', 'CACHE', 'WRITE POLICY', 'COHERENCE', 'DRAM', 'DMA']);
-    expect(LESSONS.filter((lesson) => lesson.group === 'data').length).toBe(3);
-    expect(LESSONS.filter((lesson) => lesson.group === 'cpu').length).toBe(6);
+  it('共 16 课，分组是 4 / 7 / 5，顺序和任务书一致', () => {
+    expect(LESSONS.map((lesson) => lesson.name)).toEqual(['INTEGER', 'MULTIPLY', 'FLOAT', 'ALU', 'ENCODING', 'DATAPATH', 'CONTROL', 'PIPELINE', 'HAZARD', 'BRANCH', 'EXCEPTION', 'CACHE', 'WRITE POLICY', 'COHERENCE', 'DRAM', 'DMA']);
+    expect(LESSONS.filter((lesson) => lesson.group === 'data').map((lesson) => lesson.id)).toEqual(['integer', 'multiply', 'float', 'alu']);
+    expect(LESSONS.filter((lesson) => lesson.group === 'cpu').map((lesson) => lesson.id)).toEqual(['encoding', 'datapath', 'control', 'pipeline', 'hazard', 'branch', 'exception']);
     expect(LESSONS.filter((lesson) => lesson.group === 'memio').length).toBe(5);
+  });
+
+  it('每课的「下一课」指向清单里真正的下一课', () => {
+    LESSONS.forEach((lesson, index) => {
+      const next = lesson.outro.facts.find(([label]) => label === '下一课');
+      if (index === LESSONS.length - 1) expect(next, lesson.id).toBeUndefined();
+      else if (next) expect(next[1], lesson.id).toBe(LESSONS[index + 1].name);
+    });
   });
 
   it('课程 id 不重复', () => {
@@ -430,6 +438,78 @@ describe('面板和轨迹同属一拍', () => {
       expect(JSON.stringify(panel.rows[0][1]), event.row.info).toContain(`"t":"${to}"`);
     });
   });
+
+  const STAGE_PANEL: Record<string, string> = { IF: 'sif', ID: 'sid', EX: 'sex', MEM: 'smem', WB: 'swb' };
+  /** 某个事件之前，最近一次面板里某一行的文字。 */
+  function rowText(lesson: Lesson, index: number, panel: string, key: string): string {
+    const widget = panelWidgets(foldProbes(lesson.initial, timeline(lesson), index).get(panel)!)[0] as KvWidget;
+    const value = widget.rows.find(([name]) => name === key)![1];
+    return typeof value === 'string' ? value : value.t;
+  }
+
+  it('EXCEPTION：冲刷、标记、陷入和 CSR 读写时，那一级的面板就是这条指令', () => {
+    const lesson = byId('exception');
+    const counts = { flush: 0, mark: 0, trap: 0, csr: 0, move: 0 };
+    timeline(lesson).forEach((event, index) => {
+      const list = event.type === 'packet' ? [event] : event.type === 'stream' ? event.packets : [];
+      for (const packet of list) {
+        const { info } = packet.row;
+        if (packet.row.type === 'FLUSH') {
+          const [, text, stage] = /^(.+) 在 (IF|ID|EX|MEM) 级被冲掉$/.exec(info)!;
+          expect(packet.from, info).toBe(STAGE_PANEL[stage]);
+          expect(stageText(lesson, index, packet.from), info).toBe(text);
+          counts.flush++;
+        } else if (packet.label === '标记') {
+          const text = info.split(/ 在 ID 级| 的地址/)[0];
+          expect(stageText(lesson, index, packet.from), info).toBe(text);
+          counts.mark++;
+        } else if (packet.label === '陷入') {
+          expect(stageText(lesson, index, 'swb'), info).toBe(info.split(' 在 WB')[0]);
+          expect(rowText(lesson, index, 'swb', '状态'), info).toMatch(/^带异常 mcause=\d+$/);
+          counts.trap++;
+        } else if (packet.from === 'csr' && packet.to === 'smem' || packet.to === 'csr' && packet.from === 'smem') {
+          expect(stageText(lesson, index, 'smem'), info).toBe(info.split(' 在 MEM')[0]);
+          counts.csr++;
+        } else if (event.type === 'stream') {
+          const [, text, stage] = /^(.+?) (?:带着异常标记)?进入 (ID|EX|MEM|WB) 级/.exec(info)!;
+          expect(stageText(lesson, index, STAGE_PANEL[stage]), info).toBe(text);
+          counts.move++;
+        }
+      }
+    });
+    expect(counts).toEqual({ flush: 7, mark: 3, trap: 3, csr: 4, move: 15 });
+  });
+
+  it('EXCEPTION：陷入后 CSR 面板显示新的 mcause，mret 后 MIE 恢复', () => {
+    const lesson = byId('exception');
+    const events = timeline(lesson);
+    const trap = events.findIndex((event) => event.type === 'packet' && event.label === '陷入');
+    const mret = events.findIndex((event) => event.type === 'packet' && event.label === 'mret');
+    expect(rowText(lesson, trap, 'csr', 'mcause')).toBe('0');
+    expect(rowText(lesson, mret, 'csr', 'mcause')).toBe('2 非法指令');
+    expect(rowText(lesson, mret, 'csr', 'mstatus')).toBe('MIE=0 MPIE=1');
+    expect(rowText(lesson, events.length, 'csr', 'mcause')).toBe('2 非法指令');
+    const lastA = events.findIndex((event) => event.step === lesson.steps.length - 1);
+    expect(rowText(lesson, lastA, 'csr', 'mstatus')).toBe('MIE=1 MPIE=1');
+    expect(rowText(lesson, lastA, 'regs', '[0x100]')).toBe('0x00000001');
+  });
+
+  it('MULTIPLY：每次加减之前，加减器面板已经是这一拍的结果，积寄存器最后是 -42', () => {
+    const lesson = byId('multiply');
+    const events = timeline(lesson);
+    let checked = 0;
+    events.forEach((event, index) => {
+      if (event.type !== 'packet' || event.row.type !== 'CALC') return;
+      const result = /= (-?\d+)，写回 A$/.exec(event.row.info)![1];
+      expect(rowText(lesson, index, 'adder', '结果'), event.row.info).toMatch(new RegExp(`= ${result}$`));
+      checked++;
+    });
+    expect(checked).toBe(3);
+    const regy = panelWidgets(foldProbes(lesson.initial, events, events.length).get('regy')!)[0] as BitsWidget;
+    expect(Math.floor(regy.value / 2)).toBe(0xffd6);
+    const table = panelWidgets(foldProbes(lesson.initial, events, events.length).get('table')!)[0] as GridWidget;
+    expect(table.rows.filter((row) => row[3] !== undefined && (typeof row[3] === 'string' || row[3].t !== '·')).length).toBe(9);
+  });
 });
 
 describe('窄面板的读数区', () => {
@@ -446,7 +526,7 @@ describe('冲刷标记', () => {
   it('只用于被冲掉的错误路径指令', () => {
     const lost = LESSONS.flatMap((lesson) => packetsOf(lesson).filter((packet) => packet.lost).map((packet) => `${lesson.id}:${packet.label}:${packet.row.type}`));
     expect(lost.length).toBeGreaterThan(0);
-    for (const item of lost) expect(item).toMatch(/^branch:冲掉:FLUSH$/);
+    for (const item of lost) expect(item).toMatch(/^(branch|exception):冲掉:FLUSH$/);
   });
 
   it('缓存未命中不被当作被冲掉', () => {

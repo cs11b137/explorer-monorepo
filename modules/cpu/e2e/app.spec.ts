@@ -1,9 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const LESSON_IDS = ['integer', 'float', 'alu', 'encoding', 'datapath', 'control', 'pipeline', 'hazard', 'branch', 'cache', 'writepolicy', 'coherence', 'dram', 'dma'];
+const LESSON_IDS = ['integer', 'multiply', 'float', 'alu', 'encoding', 'datapath', 'control', 'pipeline', 'hazard', 'branch', 'exception', 'cache', 'writepolicy', 'coherence', 'dram', 'dma'];
 
 const MAIN_PANELS: Record<string, string[]> = {
   integer: ['adder'],
+  multiply: ['table'],
   float: ['table'],
   alu: ['alu', 'shifter', 'multiplier'],
   encoding: ['word'],
@@ -12,6 +13,7 @@ const MAIN_PANELS: Record<string, string[]> = {
   pipeline: ['table'],
   hazard: ['table'],
   branch: ['table'],
+  exception: ['table'],
   cache: ['cache'],
   writepolicy: ['cache', 'cache1'],
   coherence: ['history'],
@@ -213,13 +215,13 @@ test.describe('播放控制', () => {
   test('标签页筛选', async ({ page }) => {
     await open(page);
     await page.click('.tab[data-group="data"]');
-    await expect(page.locator('.proto:visible')).toHaveCount(3);
+    await expect(page.locator('.proto:visible')).toHaveCount(4);
     await page.click('.tab[data-group="cpu"]');
-    await expect(page.locator('.proto:visible')).toHaveCount(6);
+    await expect(page.locator('.proto:visible')).toHaveCount(7);
     await page.click('.tab[data-group="memio"]');
     await expect(page.locator('.proto:visible')).toHaveCount(5);
     await page.click('.tab[data-group="all"]');
-    await expect(page.locator('.proto:visible')).toHaveCount(14);
+    await expect(page.locator('.proto:visible')).toHaveCount(16);
   });
 });
 
@@ -281,6 +283,20 @@ test.describe('检查器', () => {
     await expect(page.locator('.bt.is-lit')).toHaveCount(2);
     await page.locator('.ins-field', { hasText: '块内偏移' }).first().hover();
     await expect(page.locator('.bt.is-lit')).toHaveCount(4);
+  });
+
+  test('CSR 指令解码到 csr 字段，mtvec 解码到 BASE 和 MODE', async ({ page }) => {
+    await open(page);
+    await page.click('.proto[data-lesson="exception"] .proto-row');
+    await page.locator('tr[data-packet="0"]').click();
+    await expect(page.locator('.ins-title b')).toHaveText('mtvec');
+    await page.locator('.ins-field', { hasText: 'inst[31:20]' }).first().hover();
+    await expect(page.locator('.bt.is-lit')).toHaveCount(12);
+    // csr 字段的说明里也提到 BASE 和 MODE，所以按字段名连同位范围匹配。
+    await page.locator('.ins-field', { hasText: /BASE\s+\[31:2\]/ }).first().hover();
+    await expect(page.locator('.bt.is-lit')).toHaveCount(30);
+    await page.locator('.ins-field', { hasText: /MODE\s+\[1:0\]/ }).first().hover();
+    await expect(page.locator('.bt.is-lit')).toHaveCount(2);
   });
 
   test('所有事件都能打开', async ({ page }) => {

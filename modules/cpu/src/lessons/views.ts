@@ -62,7 +62,10 @@ export function gantt(result: PipelineResult, upTo: number, options: { title?: s
     .filter((item) => Object.keys(item.timeline).some((key) => Number(key) >= first && Number(key) <= last))
     .slice(0, options.maxRows ?? Infinity)
     .map((item) => {
-      const cells: CellLike[] = [item.flushed && Object.keys(item.timeline).some((key) => Number(key) <= upTo && result.cycles[Number(key) - 1].flushed.some((f) => f.seq === item.seq)) ? cell(item.text, 'red') : item.text];
+      const flushed = item.flushed && Object.keys(item.timeline).some((key) => Number(key) <= upTo && result.cycles[Number(key) - 1].flushed.some((f) => f.seq === item.seq));
+      // 带着异常标记、最后在 WB 陷入的指令标成琥珀色。
+      const trapped = !item.flushed && item.exception !== null && item.exception.cycle <= upTo;
+      const cells: CellLike[] = [flushed ? cell(item.text, 'red') : trapped ? cell(item.text, 'amber') : item.text];
       for (let c = first; c <= last; c++) {
         const stage = c <= upTo ? item.timeline[c] : undefined;
         if (!stage) cells.push('');

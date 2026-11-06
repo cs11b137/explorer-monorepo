@@ -143,3 +143,81 @@ export function shiftAddMul(a: number, b: number): { iterations: MulIteration[];
   }
   return { iterations, product };
 }
+
+export type BoothOp = 'add' | 'sub' | 'none';
+
+export interface BoothIteration {
+  index: number;
+  /** 这一拍看的两位：Q 的最低位和上一拍移出的 Q-1。 */
+  q0: number;
+  qm1: number;
+  /** 10 减被乘数，01 加被乘数，00 和 11 不动。 */
+  op: BoothOp;
+  /** 这一拍开始时的 A。 */
+  aBefore: number;
+  /** 加减之后、移位之前的 A。 */
+  aAfterOp: number;
+  /** 做加减的门级加法器，宽度比 A 多 1 位；不动时为 null。 */
+  add: AddResult | null;
+  /** A : Q : Q-1 一起算术右移一位之后。 */
+  a: number;
+  q: number;
+  qm1Out: number;
+}
+
+export interface BoothResult {
+  width: number;
+  multiplicand: number;
+  multiplier: number;
+  iterations: BoothIteration[];
+  /** 积的高、低两半，各 width 位。 */
+  high: number;
+  low: number;
+  /** 按补码读的完整积。 */
+  product: number;
+}
+
+/**
+ * Radix-2 Booth 乘法器：被乘数 M、累加器 A、乘数 Q 和附加位 Q-1，width 拍做完。
+ * 每拍看 Q0 Q-1：10 时 A = A - M，01 时 A = A + M，然后 A : Q : Q-1 一起算术右移一位。
+ * 加减器内部比 A 多 1 位符号位，被乘数是最小负数（比如 8 位的 -128）时也不会溢出；
+ * A 的值只取低 width 位，就是积的高半部分。width 最大 30，保证位运算不越过 32 位。
+ */
+export function boothMul(multiplicand: number, multiplier: number, width = 8): BoothResult {
+  if (width < 2 || width > 30) throw new Error(`Booth 乘法器的宽度越界：${width}`);
+  const m = mask(width);
+  const wide = width + 1;
+  const mVal = (multiplicand & m) >>> 0;
+  const mWide = (toSigned(mVal, width) & mask(wide)) >>> 0;
+  let a = 0;
+  let q = (multiplier & m) >>> 0;
+  let qm1 = 0;
+  const iterations: BoothIteration[] = [];
+  for (let index = 0; index < width; index++) {
+    const q0 = q & 1;
+    const qm1In = qm1;
+    const op: BoothOp = q0 === 1 && qm1In === 0 ? 'sub' : q0 === 0 && qm1In === 1 ? 'add' : 'none';
+    const aBefore = a;
+    const add = op === 'add' ? rippleAdd(a, mWide, 0, wide) : op === 'sub' ? rippleSub(a, mWide, wide) : null;
+    const aAfterOp = add ? add.sum : a;
+    // 算术右移：A 的最低位移进 Q 的最高位，Q 的最低位移进 Q-1，A 的符号位原样保留。
+    const sign = (aAfterOp >>> (wide - 1)) & 1;
+    qm1 = q0;
+    q = ((q >>> 1) | ((aAfterOp & 1) << (width - 1))) >>> 0;
+    a = ((aAfterOp >>> 1) | (sign << (wide - 1))) >>> 0;
+    iterations.push({ index, q0, qm1: qm1In, op, aBefore: (aBefore & m) >>> 0, aAfterOp: (aAfterOp & m) >>> 0, add, a: (a & m) >>> 0, q, qm1Out: qm1 });
+  }
+  return { width, multiplicand: mVal, multiplier: (multiplier & m) >>> 0, iterations, high: (a & m) >>> 0, low: q, product: toSigned(a, wide) * 2 ** width + q };
+}
+
+/** Booth 重编码：第 i 位的数字是 Q[i-1] - Q[i]（Q[-1] = 0），取值 -1、0、1，按 2^i 加权后等于按补码读的乘数。 */
+export function boothDigits(multiplier: number, width = 8): number[] {
+  const digits: number[] = [];
+  let previous = 0;
+  for (let bit = 0; bit < width; bit++) {
+    const current = (multiplier >>> bit) & 1;
+    digits.push(previous - current);
+    previous = current;
+  }
+  return digits;
+}
