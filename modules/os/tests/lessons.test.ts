@@ -6,11 +6,27 @@ import { foldStates, NODE_IDS, packetsOf, type NodeId } from '../src/lessons/typ
 import { NODE_SPECS } from '../src/scene/devices';
 
 describe('课程清单', () => {
-  it('共 14 课，分组是 7 / 4 / 3', () => {
-    expect(LESSONS.length).toBe(14);
-    expect(LESSONS.filter((lesson) => lesson.group === 'process').length).toBe(7);
-    expect(LESSONS.filter((lesson) => lesson.group === 'memory').length).toBe(4);
-    expect(LESSONS.filter((lesson) => lesson.group === 'io').length).toBe(3);
+  it('共 18 课，分组是 8 / 5 / 5', () => {
+    expect(LESSONS.length).toBe(18);
+    expect(LESSONS.filter((lesson) => lesson.group === 'process').length).toBe(8);
+    expect(LESSONS.filter((lesson) => lesson.group === 'memory').length).toBe(5);
+    expect(LESSONS.filter((lesson) => lesson.group === 'io').length).toBe(5);
+  });
+
+  it('课程顺序：同组相邻，组内按讲授顺序', () => {
+    expect(LESSONS.map((lesson) => lesson.id)).toEqual([
+      'boot', 'syscall', 'interrupt', 'fork', 'exec', 'contextswitch', 'scheduler', 'futex',
+      'pagewalk', 'pagefault', 'cow', 'mmap', 'reclaim',
+      'pathlookup', 'fileread', 'journal', 'pipe', 'signal',
+    ]);
+  });
+
+  it('总结里的「下一课」指向真正的下一课', () => {
+    LESSONS.forEach((lesson, index) => {
+      const next = lesson.outro.facts.find(([label]) => label === '下一课');
+      if (index === LESSONS.length - 1) expect(next, lesson.id).toBeUndefined();
+      else if (next) expect(next[1], lesson.id).toBe(LESSONS[index + 1].name);
+    });
   });
 
   it('课程 id 不重复', () => {
@@ -162,7 +178,10 @@ describe('事实一致性', () => {
   });
 
   it('系统调用号与 syscall_64.tbl 一致', () => {
-    const numbers: Record<string, number> = { write: 1, read: 0, clone: 56, execve: 59, wait4: 61, futex: 202, openat: 257, pipe2: 293, exit_group: 231, sched_setattr: 314, fsync: 74 };
+    const numbers: Record<string, number> = {
+      write: 1, read: 0, clone: 56, execve: 59, wait4: 61, futex: 202, openat: 257, pipe2: 293, exit_group: 231, sched_setattr: 314, fsync: 74,
+      brk: 12, mmap: 9, newfstatat: 262, kill: 62, rt_sigaction: 13, rt_sigreturn: 15,
+    };
     const all = LESSONS.flatMap(packetsOf).flatMap((packet) => packet.wire.layers);
     for (const layer of all) {
       const match = layer.name.match(/^系统调用 · (\w+)$/);
@@ -171,6 +190,96 @@ describe('事实一致性', () => {
       expect(numbers[name], name).toBeDefined();
       expect(layer.bytes[0], name).toBe(numbers[name] & 0xff);
     }
+  });
+});
+
+describe('前后事件的数值一致', () => {
+  const lesson = (id: string) => LESSONS.find((item) => item.id === id)!;
+  const packet = (id: string, label: string) => {
+    const found = packetsOf(lesson(id)).filter((item) => item.label === label);
+    expect(found.length, `${id}:${label}`).toBe(1);
+    return decode(found[0].wire);
+  };
+  const u64 = (bytes: Array<number | null>, at: number) => {
+    let value = 0n;
+    for (let index = 7; index >= 0; index--) value = (value << 8n) | BigInt(bytes[at + index] as number);
+    return value;
+  };
+  const value = (frame: ReturnType<typeof decode>, name: string) => frame.fields.find((field) => field.name === name)!.value;
+  const aux = (stack: ReturnType<typeof decode>, name: string) => {
+    const field = stack.fields.find((item) => item.name.startsWith(`AT_${name}（`))!;
+    return u64(stack.bytes, field.from + 8);
+  };
+
+  it('exec：argv 和 AT_EXECFN 指向参数字符串区，rsp 按 16 字节对齐', () => {
+    const strings = packet('exec', '拷贝字符串');
+    const stack = packet('exec', '写初始栈');
+    const regs = packet('exec', 'start_thread');
+    const top = aux(stack, 'EXECFN') + 12n + 8n;
+    expect(top % 4096n).toBe(0n);
+    const base = top - BigInt(strings.bytes.length);
+    const at = (pointer: bigint) => Number(pointer - base);
+    const cstr = (offset: number) => String.fromCharCode(...(strings.bytes.slice(offset, strings.bytes.indexOf(0, offset)) as number[]));
+    expect(u64(stack.bytes, 0)).toBe(2n);
+    expect(cstr(at(u64(stack.bytes, 8)))).toBe('ls');
+    expect(cstr(at(u64(stack.bytes, 16)))).toBe('-l');
+    expect(cstr(at(u64(stack.bytes, 32)))).toBe('PATH=/usr/bin:/bin');
+    expect(cstr(at(aux(stack, 'EXECFN')))).toBe('/usr/bin/ls');
+    const rsp = u64(regs.bytes, 152);
+    expect(rsp % 16n).toBe(0n);
+    expect(value(regs, 'sp')).toBe(stack.layers[0].summary.match(/0x[0-9a-f]+/)![0]);
+    expect(aux(stack, 'ENTRY') - aux(stack, 'PHDR')).toBe(0x6d30n - 64n);
+    expect(u64(regs.bytes, 128)).toBe(aux(stack, 'BASE') + 0x1f540n);
+  });
+
+  it('exec：程序头表里的 PT_LOAD 与 ELF 头一致', () => {
+    const header = packet('exec', 'ELF 头');
+    expect(value(header, 'e_phnum')).toBe('13');
+    const table = packet('exec', '程序头表');
+    expect(table.layers.length).toBe(4);
+    expect(table.bytes.length).toBe(4 * 56);
+  });
+
+  it('mmap：maps 里的起点就是 mmap 的返回值，也是缺页的地址', () => {
+    const maps = packetsOf(lesson('mmap')).filter((item) => item.label === '插入 VMA').map((item) => decode(item.wire));
+    const text = String.fromCharCode(...(maps[1].bytes as number[]));
+    const start = BigInt(`0x${text.slice(0, text.indexOf('-'))}`);
+    const returns = packetsOf(lesson('mmap')).filter((item) => item.label === 'mmap 返回').map((item) => decode(item.wire));
+    expect(u64(returns[1].bytes, 0)).toBe(start);
+    expect(u64(packet('mmap', '#PF').bytes, 0)).toBe(start);
+  });
+
+  it('pathlookup：stat 结果与目录项、inode 一致', () => {
+    const dir = packet('pathlookup', '目录块');
+    const inode = packet('pathlookup', 'inode');
+    const stat = packet('pathlookup', 'stat 返回');
+    const notes = dir.layers.at(-1)!;
+    const ino = dir.bytes.slice(notes.from, notes.from + 4) as number[];
+    expect(BigInt(ino[0] | (ino[1] << 8) | (ino[2] << 16) | (ino[3] << 24))).toBe(u64(stat.bytes, 8));
+    expect(stat.bytes[24]! | (stat.bytes[25]! << 8)).toBe(inode.bytes[0]! | (inode.bytes[1]! << 8));
+    expect(u64(stat.bytes, 48)).toBe(BigInt(inode.bytes[4]!));
+    const offsets = dir.layers.map((layer) => layer.from);
+    dir.layers.slice(0, -1).forEach((layer, index) => expect(layer.to).toBe(offsets[index + 1]));
+  });
+
+  it('signal：信号帧里的现场、pt_regs 和最后恢复的 RIP 一致', () => {
+    const regs = packet('signal', '改 pt_regs');
+    const frame = packet('signal', '写信号帧');
+    const enter = packet('signal', '跳到处理函数');
+    const back = packet('signal', '回到 read');
+    const ret = packet('signal', 'rt_sigreturn');
+    const ip = u64(regs.bytes, 128);
+    expect(u64(regs.bytes, 88)).toBe(ip + 2n);
+    expect(u64(frame.bytes, 48 + 128)).toBe(ip);
+    expect(u64(frame.bytes, 48 + 104)).toBe(0n);
+    expect(u64(back.bytes, 0)).toBe(ip);
+    const rsp = u64(enter.bytes, 8);
+    expect(rsp % 16n).toBe(8n);
+    expect(u64(enter.bytes, 24) - rsp).toBe(312n);
+    expect(u64(enter.bytes, 32) - rsp).toBe(8n);
+    expect(u64(ret.bytes, 8)).toBe(rsp + 8n);
+    expect(u64(frame.bytes, 48 + 184) - rsp).toBeGreaterThanOrEqual(440n);
+    expect(u64(frame.bytes, 48 + 120)).toBe(u64(back.bytes, 8));
   });
 });
 

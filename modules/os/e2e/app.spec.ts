@@ -1,6 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const LESSON_IDS = ['boot', 'syscall', 'fork', 'interrupt', 'contextswitch', 'scheduler', 'futex', 'pagewalk', 'pagefault', 'cow', 'reclaim', 'fileread', 'journal', 'pipe'];
+const LESSON_IDS = [
+  'boot', 'syscall', 'interrupt', 'fork', 'exec', 'contextswitch', 'scheduler', 'futex',
+  'pagewalk', 'pagefault', 'cow', 'mmap', 'reclaim',
+  'pathlookup', 'fileread', 'journal', 'pipe', 'signal',
+];
 
 function watchErrors(page: Page): string[] {
   const errors: string[] = [];
@@ -91,13 +95,13 @@ test.describe('播放控制', () => {
   test('标签页筛选', async ({ page }) => {
     await open(page);
     await page.click('.tab[data-group="memory"]');
-    await expect(page.locator('.proto:visible')).toHaveCount(4);
+    await expect(page.locator('.proto:visible')).toHaveCount(5);
     await page.click('.tab[data-group="io"]');
-    await expect(page.locator('.proto:visible')).toHaveCount(3);
+    await expect(page.locator('.proto:visible')).toHaveCount(5);
     await page.click('.tab[data-group="process"]');
-    await expect(page.locator('.proto:visible')).toHaveCount(7);
+    await expect(page.locator('.proto:visible')).toHaveCount(8);
     await page.click('.tab[data-group="all"]');
-    await expect(page.locator('.proto:visible')).toHaveCount(14);
+    await expect(page.locator('.proto:visible')).toHaveCount(18);
   });
 });
 

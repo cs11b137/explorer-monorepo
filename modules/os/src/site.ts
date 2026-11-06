@@ -15,7 +15,7 @@ export const site: SiteConfig<Lesson> = {
     tabs: [
       { id: 'process', label: '进程与并发' },
       { id: 'memory', label: '内存' },
-      { id: 'io', label: '存储与 I/O' },
+      { id: 'io', label: '文件与通信' },
     ],
   },
   layers: {

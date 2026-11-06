@@ -102,7 +102,7 @@ export const reclaim: Lesson = {
         pk('app', 'mmu', 'blue', '读', [hex(VA)], [800000000, 'SW', '访问已被换出的页面', 'reg'],
           wire('用户访问', 'regs', 'abi', registers('操作数', [['VA', VA, '这一页目前不在内存。', { example: true }]], 'blue')), { quick: true }),
         pk('mmu', 'kernel', 'blue', '#PF', ['err = 0x04'], [800000000, 'EXC', '缺页：do_swap_page', 'reg'],
-          wire('错误码和上一课不同：这次是读访问', 'regs', 'abi', registers('异常信息', [
+          wire('错误码和 COW 一课不同：这次是读访问', 'regs', 'abi', registers('异常信息', [
             ['CR2', VA, '出错的虚拟地址。'],
             ...pfError(0x04),
           ], 'blue')), { locked: true }),
@@ -122,6 +122,6 @@ export const reclaim: Lesson = {
     title: '选错了就要付出代价',
     desc: '回收的核心是猜下一个要用的页',
     text: '猜错的代价是一次磁盘读取，比内存访问慢上千到上百万倍。如果一直猜错，系统就会把时间都花在换入换出上，这就是抖动。没有 swap 时匿名页无法回收，内存耗尽就只能靠 OOM killer 杀进程。',
-    facts: [['抖动', '工作集大于物理内存'], ['没有 swap', '匿名页回收不了'], ['下一课', 'FILE READ']],
+    facts: [['抖动', '工作集大于物理内存'], ['没有 swap', '匿名页回收不了'], ['下一课', 'PATH LOOKUP']],
   },
 };
