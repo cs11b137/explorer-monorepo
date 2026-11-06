@@ -27,17 +27,65 @@ test('首页没有资源错误，也不横向溢出', async ({ page }) => {
 for (const name of MODULES) {
   test(`从首页进入 ${name} 模块`, async ({ page }) => {
     const problems: string[] = [];
-    page.on('pageerror', (error) => problems.push(error.message));
-    page.on('response', (response) => {
+    const context = page.context();
+    context.on('weberror', (error) => problems.push(error.error().message));
+    context.on('response', (response) => {
       if (response.status() >= 400) problems.push(`${response.status()} ${response.url()}`);
     });
     await page.goto('./');
-    await page.click(`.course[data-module="${name}"]`);
-    await expect(page).toHaveURL(`modules/${name}/`);
-    await expect(page.locator('.proto')).toHaveCount(LESSON_COUNT[name]);
+    const [course] = await Promise.all([context.waitForEvent('page'), page.click(`.course[data-module="${name}"]`)]);
+    await expect(course).toHaveURL(`modules/${name}/`);
+    await expect(course.locator('.proto')).toHaveCount(LESSON_COUNT[name]);
+    await expect(page).toHaveURL('./');
     expect(problems).toEqual([]);
   });
 }
+
+test('首页可以切换浅色和深色主题，刷新后保留选择', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.goto('./');
+  const html = page.locator('html');
+  await expect(html).toHaveAttribute('data-theme', 'dark');
+  await expect(page.locator('[data-theme-choice="dark"]')).toHaveAttribute('aria-pressed', 'true');
+  const darkBg = await page.locator('body').evaluate((body) => getComputedStyle(body).backgroundColor);
+
+  await page.click('[data-theme-choice="light"]');
+  await expect(html).toHaveAttribute('data-theme', 'light');
+  await expect(page.locator('[data-theme-choice="light"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('body')).not.toHaveCSS('background-color', darkBg);
+
+  await page.reload();
+  await expect(html).toHaveAttribute('data-theme', 'light');
+  await page.goto('404.html');
+  await expect(html).toHaveAttribute('data-theme', 'light');
+});
+
+test('课程可以按分类筛选', async ({ page }) => {
+  await page.goto('./');
+  const visible = page.locator('.course:visible');
+  await expect(page.locator('[data-filter="all"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('[data-filter="all"] .count')).toHaveText(String(MODULES.length));
+  await expect(visible).toHaveCount(MODULES.length);
+
+  const expected: Record<string, string[]> = { system: ['cpu', 'os', 'codegen'], 'network-data': ['protocol', 'db'], algorithm: ['algo'] };
+  for (const [filter, modules] of Object.entries(expected)) {
+    await page.click(`[data-filter="${filter}"]`);
+    await expect(page.locator(`[data-filter="${filter}"]`)).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator(`[data-filter="${filter}"] .count`)).toHaveText(String(modules.length));
+    await expect(visible).toHaveCount(modules.length);
+    expect(await visible.evaluateAll((cards) => cards.map((card) => (card as HTMLElement).dataset.module))).toEqual(modules);
+  }
+  await page.click('[data-filter="all"]');
+  await expect(visible).toHaveCount(MODULES.length);
+});
+
+test('课程链接在新标签页打开', async ({ page }) => {
+  await page.goto('./');
+  for (const course of await page.locator('.course').all()) {
+    await expect(course).toHaveAttribute('target', '_blank');
+    await expect(course).toHaveAttribute('rel', /noopener/);
+  }
+});
 
 for (const name of MODULES.filter((module) => module !== 'protocol')) {
   test(`${name} 模块的品牌区回到首页`, async ({ page }) => {

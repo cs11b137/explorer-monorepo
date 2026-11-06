@@ -1,2 +1,8 @@
-// 在首次绘制之前决定主题。首页没有切换按钮，跟随系统。
-document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+// 在首次绘制之前决定主题：优先用上次在首页的选择，否则跟随系统。
+try {
+  var saved = localStorage.getItem('explorer:theme');
+  var dark = saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+} catch (e) {
+  document.documentElement.dataset.theme = 'light';
+}
