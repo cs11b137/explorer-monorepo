@@ -1,0 +1,10 @@
+{
+  "name": "RAG Explorer · 看懂一个问题如何找到它的答案",
+  "short_name": "RAG Explorer",
+  "lang": "zh-CN",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#fdfdfe",
+  "theme_color": "#003ca8",
+  "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

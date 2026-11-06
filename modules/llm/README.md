@@ -17,7 +17,7 @@ python scripts/subset-fonts.py <woff2 目录>  # 按本站字符重新裁剪 Ios
 
 ## 结构
 
-- `src/model/`：计算核心，纯 TypeScript，确定性（随机数全部来自固定种子）。接口见下文。分词器、UTF-8、语料、随机数和 FNV-1a 在共享包 `packages/llm-core`（`@explorer/llm-core`），和 CONTEXT EXPLORER 共用，`src/model/index.ts` 一并导出。
+- `src/model/`：计算核心，纯 TypeScript，确定性（随机数全部来自固定种子）。接口见下文。分词器、UTF-8、语料、随机数、FNV-1a 和浮点位模式在共享包 `packages/llm-core`（`@explorer/llm-core`），和 CONTEXT EXPLORER、RAG EXPLORER 共用，`src/model/index.ts` 一并导出。
 - `src/lessons/`：每节课一个文件。`index.ts` 的 `PLANNED` 是 15 节课的顺序和分组；`types.ts` 是节点、事件和图元的类型；`dsl.ts` 是写事件的简写；`common.ts` 是画格子的小工具。
 - `src/engine/`：推理组课程用的引擎模拟（roofline 账本、前缀缓存、分页与调度）。接口见下文。
 - `src/decode/`：可信度（`writer.ts`）和按真实格式写字节的层（`structures.ts`）。
@@ -172,6 +172,8 @@ python scripts/subset-fonts.py <woff2 目录>  # 按本站字符重新裁剪 Ios
 | `choiceConstraint(options: string[])` | 最简单的约束（枚举），返回 `isPrefix`、`isComplete`。JSON、正则可以照这个形状写 |
 
 ### 数值格式和量化（`numeric.ts`）
+
+fp32 / fp16 / bf16 的位模式和 int32 小端（`f32Bits` 到 `i32Bytes`）在共享包 `@explorer/llm-core/float`（RAG EXPLORER 的向量编码也用），`numeric.ts` 原样转导出，接口和数字不变。
 
 | 签名 | 说明 |
 |---|---|

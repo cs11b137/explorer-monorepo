@@ -23,7 +23,7 @@ python scripts/subset-fonts.py <woff2 目录>  # 按本站字符重新裁剪 Ios
 - `src/scene/`：`devices.ts` 是设备节点的图形，`ds.ts`、`plugin.ts` 和 llm 相同（数据结构图元的几何和帧间动画，含 `heat` 热力图）。
 - `tests/`：`core.test.ts` 核对计算核心（期望值手写自规范）；`decode.test.ts` 核对写字节的层；`lessons.test.ts` 检查每节课的结构和布局；`narrative.test.ts` 核对 messages 课的文案和计算结果，`narrative.api.test.ts` 核对 sse、dialects、retry 三课，`core.api.test.ts` 核对 retry.ts 和 openai.ts 里 Responses 流、OpenAI / OpenRouter 错误；`narrative.context.test.ts` 核对上下文工程组五课，`core.context.test.ts` 核对 recall.ts 和 context.ts；`player.test.ts` 检查播放器。
 - `e2e/app.spec.ts`：端到端测试，课程清单取自源码。
-- 分词器不在本模块：用的是共享包 `packages/llm-core`（`@explorer/llm-core`）里 LLM EXPLORER 的那个字节级 BPE，见下文「为什么复用 llm 的分词器」。
+- 分词器不在本模块：用的是共享包 `packages/llm-core`（`@explorer/llm-core`）里 LLM EXPLORER 的那个字节级 BPE，见下文「为什么复用 llm 的分词器」。JSON、HTTP/1.1 和 BM25 的实现也在共享包里（和 RAG EXPLORER 共用），`core/` 里同名文件转导出。
 
 ## 本站约定
 
@@ -84,6 +84,8 @@ python scripts/subset-fonts.py <woff2 目录>  # 按本站字符重新裁剪 Ios
 
 ### JSON（`json.ts`）
 
+实现在共享包 `@explorer/llm-core/json`（RAG EXPLORER 也用），`core/json.ts` 原样转导出。
+
 | 签名 | 说明 |
 |---|---|
 | `encodeJson(value, indent = 0): JsonBytes` | 序列化，输出和 `JSON.stringify(value, null, indent)` 逐字节相同；`JsonBytes` 是 `{ text, bytes, spans }` |
@@ -92,6 +94,8 @@ python scripts/subset-fonts.py <woff2 目录>  # 按本站字符重新裁剪 Ios
 | `jsonSize(value): number` | 紧凑写法的字节数 |
 
 ### HTTP/1.1（`http.ts`）
+
+实现在共享包 `@explorer/llm-core/http`（RAG EXPLORER 也用），`core/http.ts` 原样转导出。
 
 | 签名 | 说明 |
 |---|---|
@@ -232,6 +236,8 @@ Responses 流只实现文字回复（没有 function_call 事件）；文档示�
 
 ### 记忆召回（`recall.ts`）
 
+`termsOf`、`bm25` 在共享包 `@explorer/llm-core/bm25`（RAG EXPLORER 的混合检索也用），`recall.ts` 转导出并保留 `recall`；`MemoryEntry`、`ScoredEntry` 是共享包 `Bm25Doc`、`Bm25Scored` 的别名。k1 = 1.2、b = 0.75 和 idf 的写法已按 Lucene BM25Similarity 的文档核对（见 RAG EXPLORER 的 README）。
+
 | 签名 | 说明 |
 |---|---|
 | `termsOf(text)` | 切词：汉字串按相邻两个字（二元组），字母数字按小写的词 |
@@ -314,11 +320,12 @@ Responses 流只实现文字回复（没有 function_call 事件）；文档示�
 | 多 Agent 系统的 token 用量约是普通对话的 15 倍（单个 Agent 约 4 倍）；子 Agent 各有自己的上下文窗口，把最重要的内容浓缩后交给主 Agent | Anthropic Engineering，How we built our multi-agent research system（2025-06-13） |
 | 研究：相关信息在输入开头或结尾时表现最好，在中间时明显下降（多文档问答、键值检索） | Liu et al.，Lost in the Middle: How Language Models Use Long Contexts，arXiv 2307.03172（2023，TACL） |
 | 研究：哪怕一个干扰项也会降低表现，四个更糟；输入越长表现越差 | Hong、Troynikov、Huber，Context Rot: How Increasing Input Tokens Impacts LLM Performance，Chroma 技术报告（2025-07-14），<https://www.trychroma.com/research/context-rot> |
+| BM25：Robertson、Zaragoza，The Probabilistic Relevance Framework: BM25 and Beyond，Foundations and Trends in IR 3(4)，2009；k1 = 1.2、b = 0.75 和 idf = log(1 + (N − n + 0.5)/(n + 0.5)) 是 Lucene BM25Similarity 的默认值（综述原文举的例子是 b = 0.5、k1 = 2；RAG EXPLORER 新建时核对） | <https://lucene.apache.org/core/10_0_0/core/org/apache/lucene/search/similarities/BM25Similarity.html> |
 | 提示注入：LLM01:2025；间接注入来自网站、文件等外部来源；缓解措施包括限制模型行为、校验输出格式、输入输出过滤、权限控制和最小权限、高风险操作要人确认、分隔并标识外部内容、对抗测试 | OWASP Top 10 for LLM Applications，<https://genai.owasp.org/llmrisk/llm01-prompt-injection/> |
 
 没有核对、以示例对待的：OpenAI strict 模式对 schema 的具体限制（本站的 schema 照文档示例写，每个对象 `additionalProperties: false`、字段全部必填，未逐条核对限制清单）、Anthropic schema 是否以及怎样计入 `input_tokens`（文档没给，本站的 token 数不含 schema）、真实服务对用户内容里特殊 token 字面文字的处理（本站按「内容一律当普通文本编码」的原则演示，Claude 服务端的做法不公开）、提示缓存的块粒度和缓存键、示例 id 的长度和字符集、x-api-key 的长度、非文档原文的错误措辞、真实 usage 里字段的顺序（文档示例只列了 input_tokens 和 output_tokens，本站按常见的顺序加上缓存字段和 service_tier）。
 
-上下文工程组没有核对、以示例或本站写法对待的：clear_tool_uses 换上的占位文字（文档没给原文，本站写「[旧的工具结果已清除]」）、工具系统提示在提示里的位置（不公开，failure 课算位置时不计它）、包装不可信内容的 `<untrusted source=…>` 标签（本站的写法）、BM25 的出处（按 Robertson、Zaragoza 2009 的综述引用，没有联网核对原文；k1 = 1.2、b = 0.75 写作「常用的默认值」）、演示窗口 2,400 / 4,000 和压缩阈值 2,800（按比例缩小的演示值）、各课里的订单、规则、网页、记忆条目（示例数据）。
+上下文工程组没有核对、以示例或本站写法对待的：clear_tool_uses 换上的占位文字（文档没给原文，本站写「[旧的工具结果已清除]」）、工具系统提示在提示里的位置（不公开，failure 课算位置时不计它）、包装不可信内容的 `<untrusted source=…>` 标签（本站的写法）、演示窗口 2,400 / 4,000 和压缩阈值 2,800（按比例缩小的演示值）、各课里的订单、规则、网页、记忆条目（示例数据）。
 
 ## 为什么复用 llm 的分词器
 
