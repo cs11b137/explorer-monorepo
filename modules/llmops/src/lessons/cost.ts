@@ -147,7 +147,7 @@ function ledgerGrid(shown: number, lift = -1, hot: 'cost' | 'ms' | null = null):
   return {
     kind: 'grid',
     id: 'l',
-    w: 54,
+    w: 72,
     rows: ENTRIES.map((e) => e.key),
     cols: ['输入', '输出', 'µ$', 'ms'],
     cells: ENTRIES.map((e, r): DsCell[] => {
@@ -234,7 +234,7 @@ export const cost: Lesson = {
   layerNote: '这课从「模型调用」到「监控」：费用来自每次调用的 usage，时长来自 span，分位数和直方图是监控指标的写法。',
   costNote: `重放上一课那次请求的三次模型调用：Claude Haiku 5.5 筛查 ${N.costs[0]}，Claude Opus 5.5 两轮 ${N.costs[1]} 和 ${N.costs[3]}，合计 ${N.total}；重复 ${REPEAT} 次只模拟耗时，没有记费用。`,
   nodes: ['backend', 'guard', 'llm', 'tools', 'observe', 'ledger', 'latency'],
-  place: { backend: [470, 130], guard: [130, 380], llm: [880, 130], tools: [880, 430], observe: [520, 420], ledger: [250, 690], latency: [830, 720] },
+  place: { backend: [470, 130], guard: [130, 380], llm: [880, 130], tools: [880, 430], observe: [520, 420], ledger: [310, 710], latency: [900, 750] },
   labels: {
     backend: ['客服后端', '同一次请求，再跑一遍'],
     guard: ['防护层', 'Haiku 筛查'],
@@ -244,7 +244,7 @@ export const cost: Lesson = {
     ledger: ['每个 span 的账', 'token、µ$、ms'],
     latency: ['延迟分布', '模拟，单位秒'],
   },
-  labelAt: { ledger: [0, 150], latency: [0, 105] },
+  labelAt: { ledger: [0, 195], latency: [0, 105] },
   radius: { ledger: 90, latency: 70 },
   initial: { ledger: [], latency: [] },
   start: ['backend', 'guard', 'llm', 'tools'],

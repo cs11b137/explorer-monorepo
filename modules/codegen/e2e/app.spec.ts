@@ -189,7 +189,8 @@ test.describe('检查器', () => {
     const row = page.locator('tr[data-packet]').filter({ hasText: 'lea esi' }).first();
     await row.click();
     await expect(page.locator('.hx')).toHaveCount(3);
-    await page.locator('.ins-field', { hasText: 'SIB' }).first().hover();
+    // 只按字段名精确匹配：rm 字段的说明里也有「SIB」，用 hasText 会先命中 rm 行，悬停后亮的是 ModRM 的 0x34。
+    await page.locator('.ins-field').filter({ has: page.locator('.ins-name', { hasText: /^SIB$/ }) }).hover();
     await expect(page.locator('.hx.is-lit')).toHaveCount(1);
     await expect(page.locator('.hx.is-lit')).toHaveText('0f');
     await page.keyboard.press('Escape');

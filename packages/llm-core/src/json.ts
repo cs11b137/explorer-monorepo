@@ -5,7 +5,7 @@
  * 所以逐字节解码时，检查器里的每个字段都能精确对到请求体、响应体里的字节。
  * 字段顺序就是对象的插入顺序：API 不要求顺序，但同一份请求每次序列化都一样，这对提示缓存很重要。
  */
-import { utf8Encode } from './utf8';
+import { utf8ByteLength, utf8Encode } from './utf8';
 
 export type JsonKind = 'object' | 'array' | 'string' | 'number' | 'boolean' | 'null';
 
@@ -39,7 +39,7 @@ export function encodeJson(value: unknown, indent = 0): JsonBytes {
   const spans: JsonSpan[] = [];
   const put = (piece: string) => {
     text += piece;
-    at += utf8Encode(piece).length;
+    at += utf8ByteLength(piece);
   };
   const pad = (depth: number) => (indent ? `\n${' '.repeat(indent * depth)}` : '');
 

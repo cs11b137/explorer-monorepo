@@ -63,18 +63,33 @@ export interface EncodeTrace {
   lookups: number;
 }
 
+/** 合并表的数值键：token id 都小于 PAIR_BASE，(a, b) 一一对应 a·PAIR_BASE + b，比拼字符串键快得多。 */
+const PAIR_BASE = 0x10000;
+const pairKey = (a: number, b: number): number => a * PAIR_BASE + b;
+/** 块缓存的上限，防止长时间运行时无限增长（全站所有课加起来远不到这个数）。 */
+const CHUNK_CACHE_LIMIT = 50_000;
+const TEXT_CACHE_LIMIT = 5_000;
+
 export class BpeTokenizer {
   /** id → 字节。0–255 是单字节，之后是合并出的 token，最后一个是结束符（没有字节）。 */
   readonly vocab: number[][];
   readonly eos: number;
-  private readonly ranks: Map<string, number>;
+  /** 合并表：键是 pairKey(a, b)。 */
+  private readonly ranks: Map<number, number>;
+  /**
+   * 预分词块 → 它的 token。同一块的编码结果只取决于合并规则，所以第一次算完就记下来；
+   * 课程里同一段系统提示、评分标准会被编码很多次，记下来能省掉绝大部分合并循环。数组只读，不交给调用方。
+   */
+  private readonly chunkCache = new Map<string, readonly number[]>();
+  /** 整段文字 → token（同一段系统提示、回复会被反复计数）。返回的是副本。 */
+  private readonly textCache = new Map<string, readonly number[]>();
 
   constructor(readonly merges: Merge[]) {
     this.vocab = Array.from({ length: 256 }, (_, byte) => [byte]);
     for (const merge of merges) this.vocab.push([...this.vocab[merge.pair[0]], ...this.vocab[merge.pair[1]]]);
     this.eos = this.vocab.length;
     this.vocab.push([]);
-    this.ranks = new Map(merges.map((merge) => [`${merge.pair[0]},${merge.pair[1]}`, merge.rank]));
+    this.ranks = new Map(merges.map((merge) => [pairKey(merge.pair[0], merge.pair[1]), merge.rank]));
   }
 
   /** 词表大小，含结束符。 */
@@ -90,17 +105,18 @@ export class BpeTokenizer {
     const words = [...counts].map(([chunk, count]) => ({ ids: utf8Encode(chunk), count }));
     const merges: Merge[] = [];
     for (let rank = 0; rank < numMerges; rank++) {
-      const pairs = new Map<string, number>();
+      const pairs = new Map<number, number>();
       for (const word of words) {
         for (let i = 0; i + 1 < word.ids.length; i++) {
-          const key = `${word.ids[i]},${word.ids[i + 1]}`;
+          const key = pairKey(word.ids[i], word.ids[i + 1]);
           pairs.set(key, (pairs.get(key) ?? 0) + word.count);
         }
       }
+      // 次数最多、并列时 id 字典序最小：这是全序，结果和遍历顺序无关。
       let best: [number, number] | null = null;
       let bestCount = 0;
       for (const [key, count] of pairs) {
-        const pair = key.split(',').map(Number) as [number, number];
+        const pair: [number, number] = [Math.floor(key / PAIR_BASE), key % PAIR_BASE];
         if (count > bestCount || (count === bestCount && best && (pair[0] < best[0] || (pair[0] === best[0] && pair[1] < best[1])))) {
           best = pair;
           bestCount = count;
@@ -116,24 +132,36 @@ export class BpeTokenizer {
 
   /** 这对 token 的合并规则 rank；没有规则时是 undefined。 */
   rankOf(a: number, b: number): number | undefined {
-    return this.ranks.get(`${a},${b}`);
+    return this.ranks.get(pairKey(a, b));
   }
 
   /** 编码。每块独立地反复合并 rank 最小的相邻对（tiktoken 的做法）。 */
   encode(text: string): number[] {
+    const cached = this.textCache.get(text);
+    if (cached) return cached.slice();
     const out: number[] = [];
-    for (const chunk of pretokenize(text)) {
-      let ids = utf8Encode(chunk);
-      for (;;) {
-        let bestRank = Infinity;
-        for (let i = 0; i + 1 < ids.length; i++) bestRank = Math.min(bestRank, this.rankOf(ids[i], ids[i + 1]) ?? Infinity);
-        if (bestRank === Infinity) break;
-        const merge = this.merges[bestRank];
-        ids = mergePair(ids, merge.pair, merge.id);
-      }
-      out.push(...ids);
+    for (const match of text.matchAll(PRETOKEN)) {
+      const ids = this.encodeChunk(match[0]);
+      for (let i = 0; i < ids.length; i++) out.push(ids[i]);
     }
+    if (this.textCache.size < TEXT_CACHE_LIMIT) this.textCache.set(text, out.slice());
     return out;
+  }
+
+  /** 一个预分词块的编码（带缓存）。 */
+  private encodeChunk(chunk: string): readonly number[] {
+    const cached = this.chunkCache.get(chunk);
+    if (cached) return cached;
+    let ids = utf8Encode(chunk);
+    for (;;) {
+      let bestRank = Infinity;
+      for (let i = 0; i + 1 < ids.length; i++) bestRank = Math.min(bestRank, this.rankOf(ids[i], ids[i + 1]) ?? Infinity);
+      if (bestRank === Infinity) break;
+      const merge = this.merges[bestRank];
+      ids = mergePair(ids, merge.pair, merge.id);
+    }
+    if (this.chunkCache.size < CHUNK_CACHE_LIMIT) this.chunkCache.set(chunk, ids);
+    return ids;
   }
 
   /**

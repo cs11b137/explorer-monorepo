@@ -100,6 +100,13 @@ export interface PairedComparison {
   flips: number;
 }
 
+/** mean(idx.map((i) => values[i]))，同样从 0 开始按顺序加，只是不建中间数组（bootstrap 里要算几千遍）。 */
+const meanAt = (values: readonly number[], idx: readonly number[]): number => {
+  let total = 0;
+  for (const i of idx) total += values[i];
+  return idx.length ? total / idx.length : 0;
+};
+
 /** 配对比较两组分数（同一模板的两个变体一一对应）：差值 a − b、符号检验、平均差的 bootstrap 区间。 */
 export function comparePaired(a: readonly number[], b: readonly number[], options: { seed?: number; iterations?: number } = {}): PairedComparison {
   if (a.length !== b.length) throw new Error('两组长度不同');
@@ -108,7 +115,7 @@ export function comparePaired(a: readonly number[], b: readonly number[], option
     diffs,
     meanDiff: mean(diffs),
     sign: signTest(diffs),
-    ci: bootstrap(diffs.length, (idx) => mean(idx.map((i) => diffs[i])), { seed: options.seed ?? 3, iterations: options.iterations ?? 2000 }),
+    ci: bootstrap(diffs.length, (idx) => meanAt(diffs, idx), { seed: options.seed ?? 3, iterations: options.iterations ?? 2000 }),
     flips: diffs.filter((d) => d !== 0).length,
   };
 }

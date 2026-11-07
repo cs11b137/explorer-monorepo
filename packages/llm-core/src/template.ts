@@ -20,7 +20,7 @@
  *     工具调用写成 <tool_call> 包起来的 JSON，工具结果写成 <tool_response>。这三个标签借自 Qwen2.5 的模板。
  *   工具放在最前面是为了和 Anthropic 文档里的缓存渲染顺序（tools → system → messages）一致。
  */
-import { utf8Encode } from './utf8';
+import { utf8ByteLength, utf8Encode } from './utf8';
 import { encodeJson } from './json';
 import { encodeWithSpecials, tokenBytes } from './tokens';
 
@@ -104,7 +104,7 @@ export function renderChatML(turns: readonly ChatTurn[], options: TemplateOption
   let at = 0;
   const pieces: Piece[] = raw.filter((piece) => piece.text).map((piece) => {
     const from = at;
-    at += utf8Encode(piece.text).length;
+    at += utf8ByteLength(piece.text);
     return { ...piece, from, to: at, tokens: 0, ids: [0, 0] };
   });
   // 每个 token 的起始字节。特殊 token 的字节就是它的字面文字，所以偏移和文本对得上。

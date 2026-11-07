@@ -8,7 +8,7 @@
  *   每类每 3 条取 1 条进测试集。同一类的句子刻意共用一些说法（废物、假发票、不想活、算账），测试集才有机会被认出来——
  *   这正是小数据集分类器的局限：没见过的说法基本认不出（课程要说明）。
  */
-import { predict, trainLogReg, type LogReg } from './classifier';
+import { probability, trainLogReg, type LogReg } from './classifier';
 
 export const MOD_CATEGORIES = ['harassment', 'illicit', 'self-harm', 'violence'] as const;
 export type ModCategory = (typeof MOD_CATEGORIES)[number];
@@ -132,7 +132,7 @@ export interface ModerationResult {
 
 /** 给一段文字打分：每个类别的概率，≥ 阈值的类别为 true，任一为 true 则 flagged。 */
 export function moderate(text: string, thresholds: Partial<Record<ModCategory, number>> = {}): ModerationResult {
-  const scores = Object.fromEntries(MOD_CATEGORIES.map((c) => [c, predict(MODERATORS[c], text).p])) as Record<ModCategory, number>;
+  const scores = Object.fromEntries(MOD_CATEGORIES.map((c) => [c, probability(MODERATORS[c], text)])) as Record<ModCategory, number>;
   const categories = Object.fromEntries(MOD_CATEGORIES.map((c) => [c, scores[c] >= (thresholds[c] ?? MOD_THRESHOLD)])) as Record<ModCategory, boolean>;
   return { flagged: MOD_CATEGORIES.some((c) => categories[c]), categories, category_scores: scores };
 }

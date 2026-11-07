@@ -17,8 +17,9 @@ export const wire = (at: string, view: Wire['view'], fidelity: Fidelity, ...laye
 let serial = 0;
 const makeLayer = (name: string, color: Color, summary = '') => new LayerWriter(`l${serial++}`, name, color, summary);
 
-/** 数值的展示：千分位用逗号，和 API 文档的写法一致。 */
-export const num = (value: number): string => value.toLocaleString('en-US');
+/** 数值的展示：千分位用逗号，和 API 文档的写法一致。和 value.toLocaleString('en-US') 相同，只是格式器建一次（每次新建很慢）。 */
+const EN_US = new Intl.NumberFormat('en-US');
+export const num = (value: number): string => EN_US.format(value);
 
 /** 字符串值的预览：太长时截断，换行写成 ↵。 */
 export function preview(text: string, max = 28): string {

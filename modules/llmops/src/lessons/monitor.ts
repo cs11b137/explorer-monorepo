@@ -178,20 +178,26 @@ const N = numbers;
 
 // ---------- 图元 ----------
 
-/** 每分钟一列：出错数和 p95（秒）。upto 之后的列留空；超标的格子 amber，事故窗口按 p95 加热度。 */
-function metricsGrid(upto: number, lift = -1): GridPrim {
+/** 每分钟一列：出错数和 p95（秒），16 分钟分成上下两段（0–7、8–15），每段的格子比一整排大一倍多。upto 之后的列留空；超标的格子 amber，事故窗口按 p95 加热度。 */
+function metricsGrid(upto: number, lift = -1): GridPrim[] {
   const maxP95 = Math.max(...stats.map((w) => w.p95));
-  return {
-    kind: 'grid',
-    id: 'w',
-    w: 36,
-    rows: ['错误', 'p95'],
-    cols: stats.map((_, i) => String(i)),
-    cells: [
-      stats.map((w, i): DsCell => (i >= upto ? { v: '', tone: 'empty' } : { v: String(w.errors), tone: w.errorRate > ERROR_RULE.above ? 'amber' : w.errors ? 'slate' : 'dim', lift: i === lift || undefined })),
-      stats.map((w, i): DsCell => (i >= upto ? { v: '', tone: 'empty' } : { v: String(Math.round(w.p95 / 1000)), tone: w.p95 > P95_RULE.above ? 'amber' : 'violet', heat: w.p95 / maxP95, lift: i === lift || undefined })),
-    ],
-  };
+  const half = stats.length / 2;
+  const W = 58;
+  return [0, 1].map((part): GridPrim => {
+    const idx = stats.map((_, i) => i).filter((i) => Math.floor(i / half) === part);
+    return {
+      kind: 'grid',
+      id: part ? 'w2' : 'w',
+      at: [0, (part - 0.5) * 3.3 * W],
+      w: W,
+      rows: ['错误', 'p95'],
+      cols: idx.map((i) => String(i)),
+      cells: [
+        idx.map((i): DsCell => (i >= upto ? { v: '', tone: 'empty' } : { v: String(stats[i].errors), tone: stats[i].errorRate > ERROR_RULE.above ? 'amber' : stats[i].errors ? 'slate' : 'dim', lift: i === lift || undefined })),
+        idx.map((i): DsCell => (i >= upto ? { v: '', tone: 'empty' } : { v: String(Math.round(stats[i].p95 / 1000)), tone: stats[i].p95 > P95_RULE.above ? 'amber' : 'violet', heat: stats[i].p95 / maxP95, lift: i === lift || undefined })),
+      ],
+    };
+  });
 }
 
 /** 采样对比：行是四类值得看的请求，列是全部、头部 10%、尾部采样留下的。 */
@@ -266,7 +272,7 @@ export const monitor: Lesson = {
   layerNote: '这课从「追踪」到「用户」：线上的 trace 汇成指标、触发告警、被采样留下，用户的差评和被拦的请求再回流成评估用例。',
   costNote: `流量是模拟的，它的费用只记在每分钟的指标里（约 ${N.costPerMinute} / 分钟）；费用列只有最后重放一条回流用例的那一次 Claude Opus 5.5 调用：${N.replayCost}。`,
   nodes: ['app', 'backend', 'collector', 'observe', 'alert', 'harness', 'llm', 'metrics', 'matrix', 'dataset'],
-  place: { app: [90, 130], backend: [440, 130], collector: [800, 130], observe: [860, 420], alert: [1140, 290], harness: [450, 790], llm: [870, 790], metrics: [450, 470], matrix: [1120, 650], dataset: [150, 680] },
+  place: { app: [90, 130], backend: [440, 130], collector: [800, 130], observe: [860, 420], alert: [1140, 290], harness: [520, 880], llm: [900, 860], metrics: [470, 510], matrix: [1120, 650], dataset: [130, 820] },
   labels: {
     app: ['应用界面', '用户提问、点差评'],
     backend: ['客服后端', '每个请求一棵 trace'],
@@ -279,7 +285,7 @@ export const monitor: Lesson = {
     matrix: ['采样留下了什么', '全部 / 头部 / 尾部'],
     dataset: ['回流的评估集', '按问题去重'],
   },
-  labelAt: { metrics: [40, 135], matrix: [0, 120], dataset: [0, 130] },
+  labelAt: { metrics: [-30, 205], matrix: [0, 120], dataset: [0, 130] },
   radius: { metrics: 80, matrix: 70, dataset: 70 },
   initial: { metrics: [], matrix: [], dataset: [] },
   start: ['app', 'backend', 'collector', 'observe'],
@@ -302,10 +308,10 @@ export const monitor: Lesson = {
       facts: [['窗口', '60 秒'], ['请求', `每分钟 ${N.perMinute} 个（模拟）`], ['平时的 p95', `最高 ${N.calmP95Max} s`], ['费用', `约 ${N.costPerMinute} / 分钟`]],
       events: [
         type(NORMAL_ASK),
-        pk('app', 'backend', 'blue', '线上流量', [`${N.requests} 个请求`, `${N.minutes} 分钟`], [0, 'CALL', `模拟流量：每分钟 ${N.perMinute} 个请求`, utf8Encode(NORMAL_ASK).length], recordWire(records[0], '第 1 个请求'), { ds: { metrics: [metricsGrid(0)] } }),
-        pk('backend', 'collector', 'teal', 'POST /v1/traces', ['每个请求一棵 trace'], [0, 'EXPORT', '每个请求的 trace 导出到 Collector', recordJson(records[0]).bytes.length], recordWire(records[0], '一个请求的摘要'), { ds: { metrics: [metricsGrid(0)] } }),
+        pk('app', 'backend', 'blue', '线上流量', [`${N.requests} 个请求`, `${N.minutes} 分钟`], [0, 'CALL', `模拟流量：每分钟 ${N.perMinute} 个请求`, utf8Encode(NORMAL_ASK).length], recordWire(records[0], '第 1 个请求'), { ds: { metrics: metricsGrid(0) } }),
+        pk('backend', 'collector', 'teal', 'POST /v1/traces', ['每个请求一棵 trace'], [0, 'EXPORT', '每个请求的 trace 导出到 Collector', recordJson(records[0]).bytes.length], recordWire(records[0], '一个请求的摘要'), { ds: { metrics: metricsGrid(0) } }),
         show('metrics'),
-        pk('observe', 'metrics', 'violet', '按分钟汇总', [`前 ${N.incidentFrom} 分钟`, `p95 ≤ ${N.calmP95Max} s`], [0, 'STATS', `第 0–${N.incidentFrom - 1} 分钟：p95 最高 ${N.calmP95Max} s`, windowJson(0, TRAFFIC.incident.from).bytes.length], windowWire(0, TRAFFIC.incident.from, '前几分钟的指标'), { ds: { metrics: [metricsGrid(TRAFFIC.incident.from)] } }),
+        pk('observe', 'metrics', 'violet', '按分钟汇总', [`前 ${N.incidentFrom} 分钟`, `p95 ≤ ${N.calmP95Max} s`], [0, 'STATS', `第 0–${N.incidentFrom - 1} 分钟：p95 最高 ${N.calmP95Max} s`, windowJson(0, TRAFFIC.incident.from).bytes.length], windowWire(0, TRAFFIC.incident.from, '前几分钟的指标'), { ds: { metrics: metricsGrid(TRAFFIC.incident.from) } }),
         state('observe', { 窗口: `${N.incidentFrom} 个`, 状态: '正常' }),
       ],
     },
@@ -315,9 +321,9 @@ export const monitor: Lesson = {
       detail: `第 ${N.incidentFrom} 分钟起延迟变成 ${N.incidentFactor} 倍、出错率升到 ${N.incidentErrorRate}（模拟的事故），p95 最高到 ${N.incidentP95Max} s。本站的告警规则是出错率超过 ${N.errorThreshold}、并且连续 ${ERROR_RULE.forWindows} 个窗口超标才触发，所以在第 ${N.errorFired} 分钟叫人，第 ${N.errorResolved} 分钟恢复；p95 超过 ${N.p95Threshold} s 的规则也在第 ${N.p95Fired} 分钟触发。如果一个窗口超标就叫，第 ${N.falseMinute} 分钟只出了 ${N.falseErrors} 个错（${N.falseRate}）也会把人叫醒：晚一分钟换来少一次误报。`,
       facts: [['触发', `第 ${N.errorFired} 分钟，${N.errorFiredValue}`], ['恢复', `第 ${N.errorResolved} 分钟`], ['p95 规则', `> ${N.p95Threshold} s，第 ${N.p95Fired} 分钟触发`], ['只看 1 个窗口', `${N.twitchyCount} 次，多 ${N.twitchyCount - N.errorAlertCount} 次误报`]],
       events: [
-        pk('observe', 'metrics', 'amber', '事故', [`p95 ${N.incidentP95Max} s`, `错误 ${N.incidentErrorsMax} 个`], [0, 'STATS', `第 ${N.incidentFrom}–${N.incidentTo} 分钟：出错率升到 ${N.incidentErrorRate} 左右，p95 最高 ${N.incidentP95Max} s`, windowJson(TRAFFIC.incident.from, N.minutes).bytes.length], windowWire(TRAFFIC.incident.from, N.minutes, '之后的指标'), { ds: { metrics: [metricsGrid(N.minutes, N.errorFired!)] } }),
+        pk('observe', 'metrics', 'amber', '事故', [`p95 ${N.incidentP95Max} s`, `错误 ${N.incidentErrorsMax} 个`], [0, 'STATS', `第 ${N.incidentFrom}–${N.incidentTo} 分钟：出错率升到 ${N.incidentErrorRate} 左右，p95 最高 ${N.incidentP95Max} s`, windowJson(TRAFFIC.incident.from, N.minutes).bytes.length], windowWire(TRAFFIC.incident.from, N.minutes, '之后的指标'), { ds: { metrics: metricsGrid(N.minutes, N.errorFired!) } }),
         show('alert'),
-        pk('observe', 'alert', 'amber', '出错率告警', [`第 ${N.errorFired} 分钟`, N.errorFiredValue], [0, 'ALERT', `出错率连续 ${ERROR_RULE.forWindows} 个窗口超过 ${N.errorThreshold}：第 ${N.errorFired} 分钟触发，第 ${N.errorResolved} 分钟恢复`, alertJson.bytes.length], alertWire, { ds: { metrics: [metricsGrid(N.minutes, N.errorFired!)] } }),
+        pk('observe', 'alert', 'amber', '出错率告警', [`第 ${N.errorFired} 分钟`, N.errorFiredValue], [0, 'ALERT', `出错率连续 ${ERROR_RULE.forWindows} 个窗口超过 ${N.errorThreshold}：第 ${N.errorFired} 分钟触发，第 ${N.errorResolved} 分钟恢复`, alertJson.bytes.length], alertWire, { ds: { metrics: metricsGrid(N.minutes, N.errorFired!) } }),
         state('alert', { 出错率: `第 ${N.errorFired}–${N.errorResolved} 分钟`, p95: `第 ${N.p95Fired}–${N.p95Resolved} 分钟` }),
         note('metrics', `第 ${N.falseMinute} 分钟：${N.falseErrors} 个错，不告警`),
       ],

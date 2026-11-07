@@ -31,9 +31,42 @@ export function encodeCodePoint(cp: number): number[] {
 
 /** 文本 → UTF-8 字节。按码点遍历，代理对会正确合成一个 4 字节字符。 */
 export function utf8Encode(text: string): number[] {
+  // 和「按码点遍历、逐个 encodeCodePoint」结果相同，只是不为每个字符分配数组（分词时每次调用都走这里，是热点）。
+  // 孤立的代理码元和 for...of 一样当作一个码点（编成 3 字节）。
   const out: number[] = [];
-  for (const char of text) out.push(...encodeCodePoint(char.codePointAt(0)!));
+  for (let i = 0; i < text.length; i++) {
+    let cp = text.charCodeAt(i);
+    if (cp >= 0xd800 && cp <= 0xdbff && i + 1 < text.length) {
+      const low = text.charCodeAt(i + 1);
+      if (low >= 0xdc00 && low <= 0xdfff) {
+        cp = (cp - 0xd800) * 0x400 + (low - 0xdc00) + 0x10000;
+        i++;
+      }
+    }
+    if (cp < 0x80) out.push(cp);
+    else if (cp < 0x800) out.push(0xc0 | (cp >> 6), 0x80 | (cp & 0x3f));
+    else if (cp < 0x10000) out.push(0xe0 | (cp >> 12), 0x80 | ((cp >> 6) & 0x3f), 0x80 | (cp & 0x3f));
+    else out.push(0xf0 | (cp >> 18), 0x80 | ((cp >> 12) & 0x3f), 0x80 | ((cp >> 6) & 0x3f), 0x80 | (cp & 0x3f));
+  }
   return out;
+}
+
+/** UTF-8 字节数，等于 utf8Encode(text).length，但不分配数组（JSON 序列化、模板渲染逐段量长度用）。 */
+export function utf8ByteLength(text: string): number {
+  let n = 0;
+  for (let i = 0; i < text.length; i++) {
+    const unit = text.charCodeAt(i);
+    if (unit < 0x80) n += 1;
+    else if (unit < 0x800) n += 2;
+    else if (unit >= 0xd800 && unit <= 0xdbff && i + 1 < text.length) {
+      const low = text.charCodeAt(i + 1);
+      if (low >= 0xdc00 && low <= 0xdfff) {
+        n += 4;
+        i++;
+      } else n += 3;
+    } else n += 3;
+  }
+  return n;
 }
 
 /** 每个字符和它的字节，课程逐字展示用。 */

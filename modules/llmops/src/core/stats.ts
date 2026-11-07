@@ -221,16 +221,34 @@ export function cohenKappa(a: readonly string[], b: readonly string[], labels?: 
   if (a.length !== b.length || !a.length) throw new Error('两组标注长度要相同且不为空');
   const set = labels ? [...labels] : [...new Set([...a, ...b])].sort();
   const index = new Map(set.map((label, i) => [label, i]));
-  const table = set.map(() => set.map(() => 0));
-  a.forEach((label, i) => table[index.get(label)!][index.get(b[i])!]++);
-  const n = a.length;
-  const po = set.reduce((sum, _, i) => sum + table[i][i], 0) / n;
-  const pe = set.reduce((sum, _, i) => {
-    const row = table[i].reduce((x, y) => x + y, 0) / n;
-    const col = table.reduce((x, r) => x + r[i], 0) / n;
-    return sum + row * col;
-  }, 0);
-  return { labels: set, table, po, pe, kappa: pe === 1 ? 1 : (po - pe) / (1 - pe) };
+  const k = set.length;
+  const table: number[][] = [];
+  for (let i = 0; i < k; i++) table.push(new Array<number>(k).fill(0));
+  for (let i = 0; i < a.length; i++) table[index.get(a[i])!][index.get(b[i])!]++;
+  return { labels: set, table, ...kappaOfTable(table, a.length) };
+}
+
+/**
+ * 从 k × k 列联表算 po、pe、κ（cohenKappa 的后半段）。n 是样本数（表里各格之和）。
+ * bootstrap 里一次要算几千遍，调用方可以自己数表、直接调它，省掉标签查表；结果和 cohenKappa 逐位相同。
+ */
+export function kappaOfTable(table: readonly (readonly number[])[], n: number): { po: number; pe: number; kappa: number } {
+  const k = table.length;
+  // 加法顺序和逐项 reduce 相同：对角线从 0 开始逐个加；pe 逐个类别加 (行和 / n)·(列和 / n)。
+  let diagonal = 0;
+  for (let i = 0; i < k; i++) diagonal += table[i][i];
+  const po = diagonal / n;
+  let pe = 0;
+  for (let i = 0; i < k; i++) {
+    let rowSum = 0;
+    let colSum = 0;
+    for (let j = 0; j < k; j++) {
+      rowSum += table[i][j];
+      colSum += table[j][i];
+    }
+    pe += (rowSum / n) * (colSum / n);
+  }
+  return { po, pe, kappa: pe === 1 ? 1 : (po - pe) / (1 - pe) };
 }
 
 export interface WeightedKappa extends Kappa {
@@ -295,7 +313,8 @@ export function bootstrap(n: number, statistic: (indices: readonly number[]) => 
   const all = Array.from({ length: n }, (_, i) => i);
   const values: number[] = [];
   for (let r = 0; r < iterations; r++) {
-    const pick = Array.from({ length: n }, () => Math.floor(rand() * n));
+    const pick: number[] = new Array(n);
+    for (let i = 0; i < n; i++) pick[i] = Math.floor(rand() * n);
     values.push(statistic(pick));
   }
   values.sort((x, y) => x - y);

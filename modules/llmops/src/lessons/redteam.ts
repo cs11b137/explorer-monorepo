@@ -19,7 +19,7 @@ import {
   mutate,
   normalize,
   ORDER_ID,
-  predict,
+  probability,
   DETECTOR,
   regexCheck,
   ruleHits,
@@ -127,7 +127,7 @@ export const j3 = MUTATIONS.map((m) => detect(DEMO_MARK + mutate(J3.text, m)));
 const exampleCall = calls1.find((c) => c.request.messages[0].content === ATTEMPTS.find((a) => a.id === 'A3/none')!.text)!;
 
 const outcomeOf = (report: AttackReport, id: string) => report.outcomes.find((o) => o.case.id === id)!;
-const pOf = (text: string) => predict(DETECTOR, text).p;
+const pOf = (text: string) => probability(DETECTOR, text);
 const catStat = (report: AttackReport, cat: AttackCategory) => report.byCategory[cat];
 const bypassed = (report: AttackReport, cat?: AttackCategory) => report.outcomes.filter((o) => !o.blocked && (!cat || o.case.category === cat)).map((o) => o.case.id);
 const succeededIds = (report: AttackReport) => report.outcomes.filter((o) => o.succeeded).map((o) => o.case.id);

@@ -13,6 +13,7 @@ import {
   formatUsd,
   judgeAgreement,
   kappaBand,
+  kappaOfTable,
   rubricScore,
   weightedKappa,
   type ModelCall,
@@ -46,11 +47,24 @@ import type { DsCell, GridPrim, Lesson, Tone } from './types';
 
 type Rater = (typeof RATER_NAMES)[number];
 const PAIRS: Array<[Rater, Rater]> = [['甲', '乙'], ['甲', '丙'], ['乙', '丙']];
+/**
+ * bootstrap 的统计量：重抽的这批样本的 κ。和 cohenKappa(重抽的甲, 重抽的乙, GRADES).kappa 逐位相同，
+ * 只是先把标签换成 GRADES 里的下标、直接数列联表（2000 次 × 3 对，省掉每次的查表和数组分配）。
+ */
+const resampledKappa = (a: Rater, b: Rater) => {
+  const ca = RATERS[a].map((l) => GRADES.indexOf(l));
+  const cb = RATERS[b].map((l) => GRADES.indexOf(l));
+  return (idx: readonly number[]) => {
+    const table = GRADES.map(() => GRADES.map(() => 0));
+    for (const i of idx) table[ca[i]][cb[i]]++;
+    return kappaOfTable(table, idx.length).kappa;
+  };
+};
 export const kappas = PAIRS.map(([a, b]) => ({
   pair: `${a}${b}`,
   plain: cohenKappa(RATERS[a], RATERS[b], GRADES),
   weighted: weightedKappa(RATERS[a], RATERS[b], GRADES, 'linear'),
-  ci: bootstrap(REPLY_KEYS.length, (idx) => cohenKappa(idx.map((i) => RATERS[a][i]), idx.map((i) => RATERS[b][i]), GRADES).kappa, { iterations: 2000, seed: 1 }),
+  ci: bootstrap(REPLY_KEYS.length, resampledKappa(a, b), { iterations: 2000, seed: 1 }),
 }));
 const AB = kappas[0];
 export const how = REPLY_KEYS.map((_, i) => adjudicate(i).how);

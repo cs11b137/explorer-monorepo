@@ -32,8 +32,19 @@ export function charNgrams(text: string, ns: readonly number[] = [1, 2, 3]): str
   return out;
 }
 
+/** 片段 → 32 位 FNV-1a 哈希。同一批片段在训练、评估、每个审核类别里会反复出现，哈希只算一次。 */
+const HASHES = new Map<string, number>();
+const hashOf = (gram: string): number => {
+  let h = HASHES.get(gram);
+  if (h === undefined) {
+    h = fnv1a32(utf8Encode(gram));
+    HASHES.set(gram, h);
+  }
+  return h;
+};
+
 /** 一个片段落进哪个桶。 */
-export const bucketOf = (gram: string, dims: number): number => fnv1a32(utf8Encode(gram)) % dims;
+export const bucketOf = (gram: string, dims: number): number => hashOf(gram) % dims;
 
 export interface Features {
   /** 出现过的桶号，升序。 */
@@ -44,17 +55,29 @@ export interface Features {
   grams: Map<number, string[]>;
 }
 
+/**
+ * 算过的特征，键是桶数、n 和文字。同一条文字会被训练（每个审核类别各训练一次）、评估、预测反复用到，
+ * 规范化（NFKC）和切片只做一次。返回给调用方的是副本，调用方改了也不影响缓存。
+ */
+const FEATURES = new Map<string, Features>();
+
 /** 文字 → 稀疏特征向量。 */
 export function featuresOf(text: string, dims: number, ns: readonly number[] = [1, 2, 3]): Features {
-  const grams = new Map<number, string[]>();
-  for (const gram of charNgrams(text, ns)) {
-    const bucket = bucketOf(gram, dims);
-    const list = grams.get(bucket);
-    if (!list) grams.set(bucket, [gram]);
-    else if (!list.includes(gram)) list.push(gram);
+  const key = `${dims}|${ns.join(',')}|${text}`;
+  let f = FEATURES.get(key);
+  if (!f) {
+    const grams = new Map<number, string[]>();
+    for (const gram of charNgrams(text, ns)) {
+      const bucket = bucketOf(gram, dims);
+      const list = grams.get(bucket);
+      if (!list) grams.set(bucket, [gram]);
+      else if (!list.includes(gram)) list.push(gram);
+    }
+    const buckets = [...grams.keys()].sort((a, b) => a - b);
+    f = { buckets, value: buckets.length ? 1 / Math.sqrt(buckets.length) : 0, grams };
+    if (FEATURES.size < 20_000) FEATURES.set(key, f);
   }
-  const buckets = [...grams.keys()].sort((a, b) => a - b);
-  return { buckets, value: buckets.length ? 1 / Math.sqrt(buckets.length) : 0, grams };
+  return { buckets: f.buckets.slice(), value: f.value, grams: new Map([...f.grams].map(([bucket, list]) => [bucket, list.slice()])) };
 }
 
 // ---------- 逻辑回归 ----------
@@ -93,7 +116,11 @@ export interface LogReg {
 
 export const sigmoid = (z: number): number => (z >= 0 ? 1 / (1 + Math.exp(-z)) : Math.exp(z) / (1 + Math.exp(z)));
 
-const logitOf = (model: LogReg, f: Features): number => f.buckets.reduce((acc, bucket) => acc + model.weights[bucket] * f.value, model.bias);
+const logitOf = (model: LogReg, f: Features): number => {
+  let acc = model.bias;
+  for (const bucket of f.buckets) acc += model.weights[bucket] * f.value;
+  return acc;
+};
 
 /** 交叉熵 −[y ln p + (1−y) ln(1−p)]，p 夹在 [1e-12, 1 − 1e-12]。 */
 const crossEntropy = (y: number, p: number) => {
@@ -115,20 +142,42 @@ export function trainLogReg(samples: readonly Sample[], options: TrainOptions = 
   };
   const order = samples.map((_, i) => i);
   const w = o.positiveWeight === 'balanced' ? model.trained.negative / Math.max(1, model.trained.positive) : o.positiveWeight;
+  // 热循环：桶号放进 Int32Array，学习率等提到局部变量。每一步的浮点运算和顺序与逐条写的公式完全相同
+  // （logit 从 bias 开始按桶号升序累加；损失从 0 开始按样本顺序累加），结果逐位一致。
+  const { lr, l2 } = o;
+  const weights = model.weights;
+  const buckets = feats.map((f) => Int32Array.from(f.buckets));
+  const values = feats.map((f) => f.value);
+  const labels = samples.map((s) => s.label);
+  const logit = (i: number, bias: number): number => {
+    const b = buckets[i];
+    const v = values[i];
+    let acc = bias;
+    for (let k = 0; k < b.length; k++) acc += weights[b[k]] * v;
+    return acc;
+  };
+  let bias = 0;
   for (let epoch = 0; epoch < o.epochs; epoch++) {
     const rand = mulberry32(o.seed + epoch);
     for (let i = order.length - 1; i > 0; i--) {
       const j = Math.floor(rand() * (i + 1));
-      [order[i], order[j]] = [order[j], order[i]];
+      const t = order[i];
+      order[i] = order[j];
+      order[j] = t;
     }
     for (const index of order) {
-      const f = feats[index];
-      const g = (sigmoid(logitOf(model, f)) - samples[index].label) * (samples[index].label === 1 ? w : 1);
-      for (const bucket of f.buckets) model.weights[bucket] -= o.lr * (g * f.value + o.l2 * model.weights[bucket]);
-      model.bias -= o.lr * g;
+      const label = labels[index];
+      const g = (sigmoid(logit(index, bias)) - label) * (label === 1 ? w : 1);
+      const b = buckets[index];
+      const v = values[index];
+      for (let k = 0; k < b.length; k++) weights[b[k]] -= lr * (g * v + l2 * weights[b[k]]);
+      bias -= lr * g;
     }
-    model.losses.push(samples.reduce((acc, s, i) => acc + crossEntropy(s.label, sigmoid(logitOf(model, feats[i]))), 0) / samples.length);
+    let loss = 0;
+    for (let i = 0; i < samples.length; i++) loss += crossEntropy(labels[i], sigmoid(logit(i, bias)));
+    model.losses.push(loss / samples.length);
   }
+  model.bias = bias;
   return model;
 }
 
@@ -149,6 +198,11 @@ export interface Prediction {
   /** 每个出现的桶对 logit 的贡献，按绝对值从大到小。 */
   contributions: Contribution[];
   features: Features;
+}
+
+/** 只要正类概率时用它：等于 predict(model, text).p，但不算每个桶的贡献、不排序。 */
+export function probability(model: LogReg, text: string): number {
+  return sigmoid(logitOf(model, featuresOf(text, model.options.dims, model.options.ns)));
 }
 
 /** 预测一条文字：概率、logit，以及每个桶的贡献（能说清楚「为什么判成注入」）。 */
