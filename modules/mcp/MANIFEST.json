@@ -1,0 +1,29 @@
+{
+  "repository": "https://github.com/Runlayer/mcp-explained",
+  "directory": "public/",
+  "commit": "9ac8b9aa3219e3fb57a8ab4927dfe92acde1777a",
+  "committedAt": "2026-11-05T14:47:11Z",
+  "mirroredAt": "2026-11-09T10:57:05.493Z",
+  "files": [
+    {
+      "path": "/favicon.svg",
+      "bytes": 2775,
+      "sha256": "c07b74afac6c43831f2aa2c805cf16129627a2673c96a4c228aff202e9c9059e"
+    },
+    {
+      "path": "/index.html",
+      "bytes": 573974,
+      "sha256": "a44614eecd49084daa304733319bdcc3bad897902cbcf996ce65cebd3be874b0"
+    },
+    {
+      "path": "/mcp-explained.mp4",
+      "bytes": 2629883,
+      "sha256": "2400e05c426a6df664117e6c17b57a367b01aa5ff950af700530c2847de65c1c"
+    },
+    {
+      "path": "/og.png",
+      "bytes": 112832,
+      "sha256": "f2b53b4763c201bfeb745166f9265b427972497bf04fb60db6778e84710eed15"
+    }
+  ]
+}

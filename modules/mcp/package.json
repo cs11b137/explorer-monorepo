@@ -1,0 +1,11 @@
+{
+  "name": "mcp-explained",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/verify.mjs && node scripts/extract.mjs && vitest run",
+    "mirror": "node scripts/mirror.mjs",
+    "extract": "node scripts/extract.mjs"
+  }
+}

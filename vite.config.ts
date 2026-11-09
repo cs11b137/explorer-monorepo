@@ -1,6 +1,7 @@
 import { existsSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig, type Connect, type Plugin } from 'vite';
+import { mcpMirror } from './scripts/mcp-mirror';
 import { protocolMirror } from './scripts/protocol-mirror';
 
 const ROOT = import.meta.dirname;
@@ -8,7 +9,7 @@ const PORT = 5300;
 // 部署到子路径时由环境变量指定，比如 /explorer-monorepo/。本地开发在根路径。
 const BASE = process.env.BASE_PATH ?? '/';
 
-// 带 index.html 的模块都参与构建，地址就是目录路径。Protocol 是镜像，由 protocolMirror 处理。
+// 带 index.html 的模块都参与构建，地址就是目录路径。Protocol 和 MCP Explained 是镜像，由 protocolMirror、mcpMirror 处理。
 const pages = readdirSync(resolve(ROOT, 'modules'))
   .map((name) => `modules/${name}/index.html`)
   .filter((page) => existsSync(resolve(ROOT, page)));
@@ -42,5 +43,5 @@ export default defineConfig({
     // 404.html 放在输出根目录。Cloudflare Pages 没有它时，会把不存在的地址都返回首页。
     rollupOptions: { input: ['index.html', '404.html', ...pages].map((page) => resolve(ROOT, page)) },
   },
-  plugins: [moduleTrailingSlash(), protocolMirror(ROOT)],
+  plugins: [moduleTrailingSlash(), protocolMirror(ROOT), mcpMirror(ROOT)],
 });

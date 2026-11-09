@@ -13,10 +13,13 @@ import { LESSONS as llmops } from '../modules/llmops/src/lessons';
 import { LESSONS as os } from '../modules/os/src/lessons';
 import { LESSONS as rag } from '../modules/rag/src/lessons';
 
-const MODULES = ['protocol', 'os', 'algo', 'codegen', 'cpu', 'db', 'llm', 'context', 'rag', 'agent', 'llmops'];
+const MODULES = ['protocol', 'os', 'algo', 'codegen', 'cpu', 'db', 'llm', 'context', 'rag', 'agent', 'llmops', 'mcp'];
+/** 两个镜像不用引擎：课程列表的选择器不同，也没有引擎模块的品牌区和 manifest。 */
+const MIRRORS = ['protocol', 'mcp'];
+const LESSON_ITEM: Record<string, string> = { mcp: '#list .li' };
 
-/** 每个模块的课数。引擎模块直接取各自的 LESSONS，加课不用改这里；Protocol 是镜像，固定 14 课。 */
-const LESSON_COUNTS: Record<string, number> = { protocol: 14, os: os.length, algo: algo.length, codegen: codegen.length, cpu: cpu.length, db: db.length, llm: llm.length, context: context.length, rag: rag.length, agent: agent.length, llmops: llmops.length };
+/** 每个模块的课数。引擎模块直接取各自的 LESSONS，加课不用改这里；Protocol 和 MCP Explained 是镜像，固定 14 课和 23 课。 */
+const LESSON_COUNTS: Record<string, number> = { protocol: 14, os: os.length, algo: algo.length, codegen: codegen.length, cpu: cpu.length, db: db.length, llm: llm.length, context: context.length, rag: rag.length, agent: agent.length, llmops: llmops.length, mcp: 23 };
 
 test('首页没有资源错误，也不横向溢出', async ({ page }) => {
   const problems: string[] = [];
@@ -46,7 +49,7 @@ for (const name of MODULES) {
     await page.goto('./');
     const [course] = await Promise.all([context.waitForEvent('page'), page.click(`.course[data-module="${name}"]`)]);
     await expect(course).toHaveURL(`modules/${name}/`);
-    await expect(course.locator('.proto')).toHaveCount(LESSON_COUNTS[name]);
+    await expect(course.locator(LESSON_ITEM[name] ?? '.proto')).toHaveCount(LESSON_COUNTS[name]);
     await expect(page).toHaveURL('./');
     expect(problems).toEqual([]);
   });
@@ -78,7 +81,7 @@ test('课程可以按分类筛选', async ({ page }) => {
   await expect(page.locator('[data-filter="all"] .count')).toHaveText(String(MODULES.length));
   await expect(visible).toHaveCount(MODULES.length);
 
-  const expected: Record<string, string[]> = { system: ['cpu', 'os', 'codegen'], 'network-data': ['protocol', 'db'], algorithm: ['algo'], ai: ['llm', 'context', 'rag', 'agent', 'llmops'] };
+  const expected: Record<string, string[]> = { system: ['cpu', 'os', 'codegen'], 'network-data': ['protocol', 'db'], algorithm: ['algo'], ai: ['llm', 'context', 'rag', 'agent', 'mcp', 'llmops'] };
   for (const [filter, modules] of Object.entries(expected)) {
     await page.click(`[data-filter="${filter}"]`);
     await expect(page.locator(`[data-filter="${filter}"]`)).toHaveAttribute('aria-pressed', 'true');
@@ -98,7 +101,7 @@ test('课程链接在新标签页打开', async ({ page }) => {
   }
 });
 
-for (const name of MODULES.filter((module) => module !== 'protocol')) {
+for (const name of MODULES.filter((module) => !MIRRORS.includes(module))) {
   test(`${name} 模块的品牌区回到首页`, async ({ page }) => {
     await page.goto(`modules/${name}/`);
     await page.click('a.brand');
@@ -120,6 +123,9 @@ test('不带斜杠的模块地址也能进入', async ({ page }) => {
   await page.goto('modules/protocol');
   await expect(page).toHaveURL('modules/protocol/');
   await expect(page.locator('.proto')).toHaveCount(LESSON_COUNTS.protocol);
+  await page.goto('modules/mcp');
+  await expect(page).toHaveURL('modules/mcp/');
+  await expect(page.locator(LESSON_ITEM.mcp)).toHaveCount(LESSON_COUNTS.mcp);
 });
 
 test('不存在的地址返回 404，不会落回首页', async ({ request }) => {

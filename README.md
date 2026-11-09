@@ -1,6 +1,6 @@
 # Explorer
 
-交互式教学主站：逐事件动画 + 逐字节解码。首页是课程入口，十一门课程是主站下的模块，全部由一个服务提供。
+交互式教学主站：逐事件动画 + 逐字节解码。首页是课程入口，十二门课程是主站下的模块，全部由一个服务提供。
 
 线上地址：<https://wuwenjunpr.site/explorer-monorepo/>，<https://cs-explorer.pages.dev/>
 
@@ -18,7 +18,8 @@
 | `modules/rag` | RAG EXPLORER | 嵌入与检索增强。嵌入、相似度、Flat / IVF / HNSW / PQ 索引、混合检索和评估全部真实计算，接口见其 `README.md` | 14 | `/modules/rag/` |
 | `modules/agent` | AGENT EXPLORER | Agent 与 MCP。Agent 循环、工具执行、MCP（2026-07-28 版）的 JSON-RPC、stdio 和 Streamable HTTP 全部真实执行，接口见其 `README.md` | 13 | `/modules/agent/` |
 | `modules/llmops` | LLMOPS EXPLORER | 安全、评估与可观测性。注入检测器（规则 + 真训练的小分类器）、PII 校验和脱敏、限流、评估统计（Wilson、kappa、McNemar、bootstrap）、W3C traceparent、OTLP/JSON 和 GenAI 语义约定属性全部真实计算，接口见其 `README.md` | 13 | `/modules/llmops/` |
-| `packages/engine` | `@explorer/engine` | 除 Protocol 外十个模块共用的引擎 |  | |
+| `modules/mcp` | MCP EXPLAINED | MCP 协议详解。Runlayer 的公开教程 [mcp-explained](https://github.com/Runlayer/mcp-explained) 的镜像，加了简体中文（默认中文，可切回英文），见其 `PROVENANCE.md` | 23 | `/modules/mcp/` |
+| `packages/engine` | `@explorer/engine` | 除 Protocol、MCP Explained 外十个模块共用的引擎 |  | |
 | `packages/llm-core` | `@explorer/llm-core` | LLM、CONTEXT、RAG、AGENT、LLMOPS 共用的计算核心：字节级 BPE 分词器、UTF-8、语料、随机数、FNV-1a（64 / 32 位）、SHA-256 和 HMAC、浮点位模式、BM25、JSON、HTTP/1.1、SSE、ChatML 模板和 token 计数、Messages API、提示缓存、计费、示例 id、令牌桶、JSON Schema 校验、小铺的场景数据 |  | |
 
 ## 常用命令
@@ -29,10 +30,11 @@ npm run dev              # 启动主站，http://localhost:5300/
 npm run build            # 类型检查、校验镜像，构建到 dist/
 npm start                # 用一个服务提供 dist/，端口同样是 5300
 npm run typecheck
-npm test                 # 全部单元测试，并校验 Protocol Explorer 镜像
+npm test                 # 全部单元测试，并校验 Protocol Explorer 和 MCP Explained 镜像
 npm run test:e2e         # 全部端到端测试，只测 Chromium，按线上的子路径构建
 npm run test:e2e -- --project=cpu   # 只测一个模块，主站首页的项目名是 portal
 npm run mirror:protocol  # 从线上重新镜像 Protocol Explorer
+npm run mirror:mcp       # 从 GitHub 重新镜像 MCP Explained，之后要补齐译文，见 modules/mcp/PROVENANCE.md
 ```
 
 ## 主站和模块怎么组合
